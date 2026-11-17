@@ -120,6 +120,7 @@ model Stapel {
   unit         WarehouseUnit @relation(fields: [unitId], references: [id], onDelete: Cascade)
   batches      Batch[]
   transactions Transaction[]
+  opnameRecords OpnameRecord[]
 
   @@index([gudang, block])
   @@index([status])
@@ -236,4 +237,54 @@ model BasoReport {
   createdBy    User?     @relation(fields: [createdById], references: [id])
 
   @@map("baso_reports")
+}
+
+// -------------------------------------------------------------
+// 8. LOG AUDIT KEAMANAN & HISTORI PERUBAHAN (GRC BUMN BULOG)
+// -------------------------------------------------------------
+model AuditLog {
+  id        String   @id @default(cuid())
+  timestamp DateTime @default(now())
+  userId    String?
+  user      String   @db.VarChar(150)
+  role      String   @default("operator") @db.VarChar(50)
+  nip       String   @default("-") @db.VarChar(50)
+  action    String   @db.VarChar(100) // COMMODITY_CREATE, COMMODITY_UPDATE, BATCH_ADJUSTMENT, dll
+  target    String   @db.VarChar(200)
+  details   String   @db.Text
+  ipAddress String?  @default("127.0.0.1") @db.VarChar(100)
+  createdAt DateTime @default(now())
+
+  @@index([action])
+  @@index([timestamp])
+  @@map("audit_logs")
+}
+
+// -------------------------------------------------------------
+// 9. HASIL PENGHITUNGAN FISIK STOCK OPNAME (SESI BERJALAN)
+// -------------------------------------------------------------
+model OpnameRecord {
+  id             String   @id @default(cuid())
+  stapelId       String
+  gudang         String   @db.VarChar(50)
+  block          String   @db.VarChar(5)
+  number         Int
+  bookKoli       Int
+  physicalKoli   Int
+  variance       Int
+  varianceStatus String   @db.VarChar(50) // "match", "shortage", "surplus"
+  layerCount     Int      @default(0)
+  perLayerKoli   Int      @default(0)
+  peakKoli       Int      @default(0)
+  damagedKoli    Int      @default(0)
+  note           String?  @db.Text
+  verifiedAt     DateTime @default(now())
+  verifiedBy     String   @db.VarChar(150)
+  verifiedNip    String   @db.VarChar(50)
+  createdAt      DateTime @default(now())
+
+  stapel         Stapel   @relation(fields: [stapelId], references: [id], onDelete: Cascade)
+
+  @@index([stapelId])
+  @@map("opname_records")
 }

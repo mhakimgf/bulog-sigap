@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import {
   INITIAL_WAREHOUSE,
@@ -47,17 +47,6 @@ const INITIAL_AUDIT_LOGS = [
     details: "Penerbitan Dokumen Resmi Berita Acara Stock Opname Fisik Kompleks CISKID",
     ipAddress: "192.168.0.101",
   },
-  {
-    id: "AUD-20261115-004",
-    timestamp: "2026-11-15T11:00:45",
-    user: "Ahmad Fauzi",
-    role: "superadmin",
-    nip: "198203152006041003",
-    action: "USER_CREATE",
-    target: "usr-1005",
-    details: "Pendaftaran akun baru operator lapangan: Siti Rahmawati (siti@bulog.co.id)",
-    ipAddress: "10.0.1.5",
-  },
 ];
 
 export const useWarehouse = () => {
@@ -72,7 +61,7 @@ export const useWarehouse = () => {
 export const calculateAgingDays = (dateString) => {
   if (!dateString) return 0;
   const inDate = new Date(dateString);
-  const now = new Date("2026-11-15T00:00:00"); // Mengikuti anchor waktu sekarang
+  const now = new Date("2026-11-15T00:00:00");
   const diffTime = Math.max(0, now - inDate);
   return Math.floor(diffTime / (1000 * 60 * 60 * 24));
 };
@@ -127,16 +116,16 @@ export const WarehouseProvider = ({ children }) => {
   const router = useRouter();
   const pathname = usePathname();
   const [warehouse, setWarehouse] = useState(INITIAL_WAREHOUSE);
-  const [commodities] = useState(COMMODITIES);
+  const [commodities, setCommodities] = useState(COMMODITIES);
   const [isOnline, setIsOnline] = useState(true);
   const [offlineQueue, setOfflineQueue] = useState([]);
-  const [activeView, setActiveView] = useState("dashboard"); // 'operator' | 'dashboard'
-  const [operatorScreen, setOperatorScreen] = useState("home"); // 'home' | 'inbound' | 'outbound' | 'stapel-detail' | 'history'
+  const [activeView, setActiveView] = useState("dashboard");
+  const [operatorScreen, setOperatorScreen] = useState("home");
   const [selectedStapelId, setSelectedStapelId] = useState("G1-A2");
   const [notificationCount, setNotificationCount] = useState(3);
   const [toastMessage, setToastMessage] = useState(null);
 
-  // Authentication & User Management State (SSR-safe initialization)
+  // Authentication & Core Data States
   const [users, setUsers] = useState(INITIAL_USERS);
   const [currentUser, setCurrentUser] = useState(null);
   const [stapels, setStapels] = useState(INITIAL_STAPELS);
@@ -145,8 +134,75 @@ export const WarehouseProvider = ({ children }) => {
   const [isFreezeMode, setIsFreezeMode] = useState(false);
   const [opnameRecords, setOpnameRecords] = useState({});
   const [isHydrated, setIsHydrated] = useState(false);
+  const [isSyncingDb, setIsSyncingDb] = useState(false);
 
-  // Load saved state from LocalStorage on client mount only (eliminates hydration mismatches)
+  // 1. Sinkronisasi Data Realtime dari PostgreSQL via REST API
+  const refreshWarehouseData = useCallback(async () => {
+    setIsSyncingDb(true);
+    try {
+      const [
+        resWh,
+        resStapels,
+        resCommodities,
+        resTrans,
+        resAudit,
+        resUsers,
+        resOpname,
+        resFreeze,
+      ] = await Promise.allSettled([
+        fetch("/api/warehouse").then((r) => r.json()),
+        fetch("/api/stapels").then((r) => r.json()),
+        fetch("/api/commodities").then((r) => r.json()),
+        fetch("/api/inventory/transactions?limit=100").then((r) => r.json()),
+        fetch("/api/audit-logs?limit=50").then((r) => r.json()),
+        fetch("/api/users").then((r) => r.json()),
+        fetch("/api/opname/records").then((r) => r.json()),
+        fetch("/api/opname/freeze").then((r) => r.json()),
+      ]);
+
+      if (resWh.status === "fulfilled" && resWh.value?.success && resWh.value.data?.warehouse) {
+        setWarehouse(resWh.value.data.warehouse);
+      }
+
+      if (resCommodities.status === "fulfilled" && resCommodities.value?.success && Array.isArray(resCommodities.value.data)) {
+        setCommodities(resCommodities.value.data);
+      }
+
+      if (resStapels.status === "fulfilled" && resStapels.value?.success && Array.isArray(resStapels.value.data) && resStapels.value.data.length > 0) {
+        setStapels(resStapels.value.data);
+      }
+
+      if (resTrans.status === "fulfilled" && resTrans.value?.success && Array.isArray(resTrans.value.data)) {
+        setTransactions(resTrans.value.data);
+      }
+
+      if (resAudit.status === "fulfilled" && resAudit.value?.success && Array.isArray(resAudit.value.data)) {
+        setAuditLogs(resAudit.value.data);
+      }
+
+      if (resUsers.status === "fulfilled" && resUsers.value?.success && Array.isArray(resUsers.value.data)) {
+        setUsers(resUsers.value.data);
+      }
+
+      if (resOpname.status === "fulfilled" && resOpname.value?.success && Array.isArray(resOpname.value.data)) {
+        const recordMap = {};
+        resOpname.value.data.forEach((r) => {
+          recordMap[r.stapelId] = r;
+        });
+        setOpnameRecords(recordMap);
+      }
+
+      if (resFreeze.status === "fulfilled" && resFreeze.value?.success) {
+        setIsFreezeMode(Boolean(resFreeze.value.data?.isFreezeMode));
+      }
+    } catch (e) {
+      console.warn("[DB_SYNC_NOTICE] Koneksi API offline, tetap menggunakan cache lokal:", e);
+    } finally {
+      setIsSyncingDb(false);
+    }
+  }, []);
+
+  // 2. Inisialisasi awal saat mount
   useEffect(() => {
     try {
       const savedUsers = localStorage.getItem("SIGAP_BULOG_USERS_V1");
@@ -185,8 +241,10 @@ export const WarehouseProvider = ({ children }) => {
       console.error("Error reading localStorage:", e);
     } finally {
       setIsHydrated(true);
+      // Panggil sinkronisasi langsung dari database PostgreSQL
+      refreshWarehouseData();
     }
-  }, []);
+  }, [refreshWarehouseData]);
 
   // Sync users to localStorage
   useEffect(() => {
@@ -233,8 +291,8 @@ export const WarehouseProvider = ({ children }) => {
     }
   }, [isFreezeMode, opnameRecords, isHydrated]);
 
-  // Log Audit Event Helper
-  const logAuditEvent = ({ action, target, details, meta = {} }) => {
+  // Log Audit Event Helper (tersimpan ke state dan API database)
+  const logAuditEvent = async ({ action, target, details, meta = {} }) => {
     const newLog = {
       id: `AUD-${Date.now().toString().slice(-8)}`,
       timestamp: new Date().toISOString(),
@@ -246,33 +304,60 @@ export const WarehouseProvider = ({ children }) => {
       details,
       ipAddress: meta.ipAddress || "192.168.0.115 (LAN Bulog)",
     };
+
     setAuditLogs((prev) => [newLog, ...prev]);
+
+    // Kirim ke API database secara asynchronous
+    try {
+      await fetch("/api/audit-logs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newLog),
+      });
+    } catch (e) {
+      console.warn("Gagal menyimpan audit log ke DB:", e);
+    }
+
     return newLog;
   };
 
   // Toggle Freeze Mode (Pembekuan Mutasi untuk Stock Opname)
-  const toggleFreezeMode = () => {
-    setIsFreezeMode((prev) => {
-      const nextState = !prev;
-      logAuditEvent({
-        action: nextState ? "FREEZE_MODE_ACTIVATED" : "FREEZE_MODE_DEACTIVATED",
-        target: "Kompleks CISKID (Seluruh Gudang)",
-        details: nextState
-          ? "Pembekuan mutasi fisik diaktifkan untuk memulai sesi Stock Opname Bulog."
-          : "Pembekuan mutasi dinonaktifkan. Mutasi keluar/masuk kembali beroperasi normal.",
+  const toggleFreezeMode = async () => {
+    const nextState = !isFreezeMode;
+    setIsFreezeMode(nextState);
+
+    showToast(
+      nextState
+        ? "Sesi Stock Opname Aktif! Seluruh mutasi barang masuk & keluar dibekukan sementara."
+        : "Sesi Stock Opname Selesai. Pembekuan mutasi telah dibuka kembali.",
+      nextState ? "warning" : "success"
+    );
+
+    try {
+      await fetch("/api/opname/freeze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          isFreeze: nextState,
+          user: currentUser?.name || "Hendra Wijaya, S.T.",
+          role: currentUser?.role || "kepala_gudang",
+          nip: currentUser?.nip || "19820415 200801 1 004",
+        }),
       });
-      showToast(
-        nextState
-          ? "Sesi Stock Opname Aktif! Seluruh mutasi barang masuk & keluar dibekukan sementara."
-          : "Sesi Stock Opname Selesai. Pembekuan mutasi telah dibuka kembali.",
-        nextState ? "warning" : "success"
-      );
-      return nextState;
-    });
+      // Ambil log audit terbaru
+      fetch("/api/audit-logs?limit=50")
+        .then((r) => r.json())
+        .then((res) => {
+          if (res.success && res.data) setAuditLogs(res.data);
+        })
+        .catch(() => {});
+    } catch (e) {
+      console.warn("Gagal update freeze mode di DB:", e);
+    }
   };
 
   // Record Stapel Opname (Kalkulator Tumpukan Karung Bulog)
-  const recordStapelOpname = ({
+  const recordStapelOpname = async ({
     stapelId,
     layerCount = 0,
     perLayerKoli = 0,
@@ -282,19 +367,17 @@ export const WarehouseProvider = ({ children }) => {
   }) => {
     const stapel = stapels.find((s) => s.id === stapelId);
     const bookKoli = stapel ? stapel.batches.reduce((sum, b) => sum + (b.koli || 0), 0) : 0;
-    
-    // Formula Kalkulator Bulog:
-    // Fisik = (Jumlah Lapis * Isi per Lapis) + Kunci Puncak - Rusak/Ceceran
+
     const layers = Number(layerCount) || 0;
     const perLayer = Number(perLayerKoli) || 0;
     const peak = Number(peakKoli) || 0;
     const damaged = Number(damagedKoli) || 0;
-    const physicalKoli = Math.max(0, (layers * perLayer) + peak - damaged);
+    const physicalKoli = Math.max(0, layers * perLayer + peak - damaged);
     const variance = physicalKoli - bookKoli;
-    
+
     let varianceStatus = "match";
-    if (variance < 0) varianceStatus = "shortage"; // Kurang
-    else if (variance > 0) varianceStatus = "surplus";  // Lebih
+    if (variance < 0) varianceStatus = "shortage";
+    else if (variance > 0) varianceStatus = "surplus";
 
     const record = {
       stapelId,
@@ -320,37 +403,110 @@ export const WarehouseProvider = ({ children }) => {
       [stapelId]: record,
     }));
 
-    logAuditEvent({
-      action: "OPNAME_STAPEL_VERIFY",
-      target: stapelId,
-      details: `Penghitungan fisik tumpukan ${stapelId}: Fisik ${physicalKoli} koli vs Buku ${bookKoli} koli (Selisih: ${variance >= 0 ? "+" : ""}${variance}). Status: ${varianceStatus.toUpperCase()}.`,
-    });
-
     showToast(
-      `Hasil opname ${stapelId} tercatat: ${physicalKoli} koli (${variance === 0 ? "Sesuai" : variance < 0 ? `Selisih Kurang ${Math.abs(variance)}` : `Selisih Lebih +${variance}`}).`,
+      `Hasil opname ${stapelId} tercatat: ${physicalKoli} koli (${
+        variance === 0 ? "Sesuai" : variance < 0 ? `Selisih Kurang ${Math.abs(variance)}` : `Selisih Lebih +${variance}`
+      }).`,
       variance === 0 ? "success" : "warning"
     );
+
+    // Kirim ke API database
+    try {
+      await fetch("/api/opname/record", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          stapelId,
+          layerCount: layers,
+          perLayerKoli: perLayer,
+          peakKoli: peak,
+          damagedKoli: damaged,
+          note,
+          user: currentUser?.name || "Budi Santoso",
+          role: currentUser?.role || "operator",
+          nip: currentUser?.nip || "19930820 201802 1 003",
+        }),
+      });
+      // Sinkronkan audit log
+      fetch("/api/audit-logs?limit=50")
+        .then((r) => r.json())
+        .then((res) => {
+          if (res.success && res.data) setAuditLogs(res.data);
+        })
+        .catch(() => {});
+    } catch (e) {
+      console.warn("Gagal simpan opname ke DB:", e);
+    }
 
     return record;
   };
 
   // Reset Sesi Stock Opname
-  const resetOpnameSession = () => {
+  const resetOpnameSession = async () => {
     setOpnameRecords({});
     localStorage.removeItem("SIGAP_BULOG_OPNAME_RECORDS_V1");
-    logAuditEvent({
-      action: "OPNAME_SESSION_RESET",
-      target: "Sesi Stock Opname",
-      details: "Seluruh catatan hitung fisik opname direset ulang untuk sesi baru.",
-    });
     showToast("Catatan sesi stock opname berhasil direset.", "info");
+
+    try {
+      await fetch("/api/opname/records", {
+        method: "DELETE",
+      });
+      fetch("/api/audit-logs?limit=50")
+        .then((r) => r.json())
+        .then((res) => {
+          if (res.success && res.data) setAuditLogs(res.data);
+        })
+        .catch(() => {});
+    } catch (e) {
+      console.warn("Gagal reset opname di DB:", e);
+    }
   };
 
-  // Login handler
-  const login = (emailOrNip, password) => {
+  // Login handler terhubung ke API backend + fallback lokal
+  const login = async (emailOrNip, password) => {
     const trimmed = (emailOrNip || "").trim().toLowerCase();
     const trimmedPass = (password || "").trim();
 
+    // 1. Coba login ke API database
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ emailOrNip: trimmed, password: trimmedPass }),
+      });
+      const data = await res.json();
+      if (data.success && data.data) {
+        const loggedUser = data.data;
+        setCurrentUser(loggedUser);
+        if (typeof window !== "undefined") {
+          localStorage.setItem("SIGAP_BULOG_AUTH_V1", JSON.stringify(loggedUser));
+        }
+
+        if (loggedUser.role === "operator") {
+          setActiveView("operator");
+          setOperatorScreen("home");
+          try {
+            router.push("/operator");
+          } catch {}
+        } else {
+          setActiveView("dashboard");
+          try {
+            router.push("/dashboard");
+          } catch {}
+        }
+
+        showToast(data.message || `Selamat datang, ${loggedUser.name}!`, "success");
+        // Segarkan data dari database
+        refreshWarehouseData();
+        return { success: true, user: loggedUser };
+      } else if (!data.success && res.status !== 500) {
+        return { success: false, message: data.message || "Email/NIP atau kata sandi tidak sesuai." };
+      }
+    } catch (err) {
+      console.warn("[AUTH_FALLBACK] Menggunakan pencocokan akun lokal:", err);
+    }
+
+    // 2. Fallback pencocokan lokal jika API tidak terjangkau
     const user = users.find((u) => {
       const emailLower = (u.email || "").toLowerCase();
       const nipClean = (u.nip || "").replace(/\s+/g, "");
@@ -359,7 +515,6 @@ export const WarehouseProvider = ({ children }) => {
       const nipMatch = nipClean === targetClean;
       const nameMatch = (u.name || "").toLowerCase() === trimmed;
       const passMatch = (u.password || "").trim() === trimmedPass;
-
       return (emailMatch || nipMatch || nameMatch) && passMatch;
     });
 
@@ -386,59 +541,44 @@ export const WarehouseProvider = ({ children }) => {
     };
 
     setCurrentUser(updatedUser);
-
-    // Save synchronously to localStorage immediately to avoid navigation race condition
     if (typeof window !== "undefined") {
       try {
         localStorage.setItem("SIGAP_BULOG_AUTH_V1", JSON.stringify(updatedUser));
-      } catch (e) {
-        console.warn("Storage error", e);
-      }
+      } catch {}
     }
 
     setUsers((prev) => prev.map((u) => (u.id === user.id ? updatedUser : u)));
 
-    logAuditEvent({
-      action: "USER_LOGIN",
-      target: user.email,
-      details: `Pengguna ${user.name} (${user.role}) berhasil masuk ke sistem SIGAP Bulog.`,
-    });
-
-    // Set default screen based on role with Next.js router navigation
     if (user.role === "operator") {
       setActiveView("operator");
       setOperatorScreen("home");
       try {
         router.push("/operator");
-      } catch (e) {
-        console.warn(e);
-      }
+      } catch {}
     } else {
       setActiveView("dashboard");
       try {
         router.push("/dashboard");
-      } catch (e) {
-        console.warn(e);
-      }
+      } catch {}
     }
 
     showToast(`Selamat datang kembali, ${user.name}!`, "success");
     return { success: true, user: updatedUser };
   };
 
-  const logout = () => {
-    logAuditEvent({
-      action: "USER_LOGOUT",
-      target: currentUser?.email || "Akun Aktif",
-      details: `Pengguna ${currentUser?.name || "User"} (${currentUser?.role || "operator"}) keluar dari sesi.`,
-    });
+  const logout = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch {}
+
     setCurrentUser(null);
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("SIGAP_BULOG_AUTH_V1");
+    }
     showToast("Anda telah keluar dari sistem.", "info");
     try {
       router.push("/login");
-    } catch (e) {
-      console.warn(e);
-    }
+    } catch {}
   };
 
   // Router-aware screen navigation for operators
@@ -470,7 +610,7 @@ export const WarehouseProvider = ({ children }) => {
     }
   };
 
-  // Sync internal state when URL pathname changes (e.g. browser back/forward or direct link)
+  // Sync internal state when URL pathname changes
   useEffect(() => {
     if (!pathname) return;
     if (pathname.startsWith("/operator")) {
@@ -485,7 +625,8 @@ export const WarehouseProvider = ({ children }) => {
     }
   }, [pathname]);
 
-  const addUser = (userData) => {
+  // User Management
+  const addUser = async (userData) => {
     const newUser = {
       id: `usr-${Date.now().toString().slice(-6)}`,
       name: userData.name,
@@ -498,63 +639,123 @@ export const WarehouseProvider = ({ children }) => {
       lastLogin: "Belum pernah",
     };
     setUsers((prev) => [newUser, ...prev]);
-    logAuditEvent({
-      action: "USER_CREATE",
-      target: newUser.email,
-      details: `Pembuatan akun baru: ${newUser.name} (${newUser.role}, NIP: ${newUser.nip}, Unit: ${newUser.unitGudang}).`,
-    });
+
+    try {
+      const res = await fetch("/api/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...userData,
+          operatorName: currentUser?.name || "Administrator Pusat",
+          operatorRole: currentUser?.role || "superadmin",
+          operatorNip: currentUser?.nip || "-",
+        }),
+      });
+      const data = await res.json();
+      if (data.success && data.data) {
+        setUsers((prev) => [data.data, ...prev.filter((u) => u.id !== newUser.id)]);
+      }
+      fetch("/api/audit-logs?limit=50")
+        .then((r) => r.json())
+        .then((res) => {
+          if (res.success && res.data) setAuditLogs(res.data);
+        })
+        .catch(() => {});
+    } catch (e) {
+      console.warn("Gagal simpan user ke DB:", e);
+    }
+
     showToast(`Akun ${newUser.name} berhasil ditambahkan.`, "success");
     return newUser;
   };
 
-  const updateUser = (userId, updates) => {
-    setUsers((prev) =>
-      prev.map((u) => (u.id === userId ? { ...u, ...updates } : u))
-    );
+  const updateUser = async (userId, updates) => {
+    setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, ...updates } : u)));
     if (currentUser?.id === userId) {
       setCurrentUser((prev) => ({ ...prev, ...updates }));
     }
-    logAuditEvent({
-      action: "USER_UPDATE",
-      target: userId,
-      details: `Pembaruan data akun: ${JSON.stringify(updates)}.`,
-    });
+
+    try {
+      await fetch(`/api/users/${userId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...updates,
+          operatorName: currentUser?.name || "Administrator Pusat",
+          operatorRole: currentUser?.role || "superadmin",
+          operatorNip: currentUser?.nip || "-",
+        }),
+      });
+      fetch("/api/audit-logs?limit=50")
+        .then((r) => r.json())
+        .then((res) => {
+          if (res.success && res.data) setAuditLogs(res.data);
+        })
+        .catch(() => {});
+    } catch (e) {
+      console.warn("Gagal update user di DB:", e);
+    }
+
     showToast("Perubahan akun berhasil disimpan.", "success");
   };
 
-  const toggleUserStatus = (userId) => {
-    let changedName = "";
+  const toggleUserStatus = async (userId) => {
     let nextStatus = "";
     setUsers((prev) =>
       prev.map((u) => {
         if (u.id === userId) {
           nextStatus = u.status === "aktif" ? "nonaktif" : "aktif";
-          changedName = u.name;
           return { ...u, status: nextStatus };
         }
         return u;
       })
     );
-    logAuditEvent({
-      action: "USER_STATUS_CHANGE",
-      target: userId,
-      details: `Status akun ${changedName} diubah menjadi: ${nextStatus}.`,
-    });
+
+    try {
+      await fetch(`/api/users/${userId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: nextStatus,
+          operatorName: currentUser?.name || "Administrator Pusat",
+          operatorRole: currentUser?.role || "superadmin",
+          operatorNip: currentUser?.nip || "-",
+        }),
+      });
+      fetch("/api/audit-logs?limit=50")
+        .then((r) => r.json())
+        .then((res) => {
+          if (res.success && res.data) setAuditLogs(res.data);
+        })
+        .catch(() => {});
+    } catch (e) {
+      console.warn("Gagal ubah status user di DB:", e);
+    }
+
     showToast("Status akun berhasil diperbarui.", "info");
   };
 
-  const deleteUser = (userId) => {
-    const targetUser = users.find((u) => u.id === userId);
+  const deleteUser = async (userId) => {
     setUsers((prev) => prev.filter((u) => u.id !== userId));
-    logAuditEvent({
-      action: "USER_DELETE",
-      target: userId,
-      details: `Penghapusan akun: ${targetUser?.name || userId} (${targetUser?.email || "-"}).`,
-    });
+
+    try {
+      await fetch(`/api/users/${userId}`, {
+        method: "DELETE",
+      });
+      fetch("/api/audit-logs?limit=50")
+        .then((r) => r.json())
+        .then((res) => {
+          if (res.success && res.data) setAuditLogs(res.data);
+        })
+        .catch(() => {});
+    } catch (e) {
+      console.warn("Gagal hapus user di DB:", e);
+    }
+
     showToast("Akun berhasil dihapus.", "info");
   };
 
-  // Sync state to LocalStorage (guarded with isHydrated)
+  // Sync state to LocalStorage
   useEffect(() => {
     if (!isHydrated) return;
     try {
@@ -573,7 +774,6 @@ export const WarehouseProvider = ({ children }) => {
     }
   }, [transactions, isHydrated]);
 
-  // Trigger Toast Notification
   const showToast = (message, type = "success") => {
     setToastMessage({ message, type, id: Date.now() });
     setTimeout(() => {
@@ -581,7 +781,6 @@ export const WarehouseProvider = ({ children }) => {
     }, 4000);
   };
 
-  // Toggle Online/Offline
   const toggleOnlineMode = () => {
     setIsOnline((prev) => {
       const nextState = !prev;
@@ -591,6 +790,7 @@ export const WarehouseProvider = ({ children }) => {
           "success"
         );
         setOfflineQueue([]);
+        refreshWarehouseData();
       } else if (!nextState) {
         showToast("Mode Offline aktif. Transaksi akan disimpan di memori lokal HP.", "warning");
       }
@@ -598,7 +798,6 @@ export const WarehouseProvider = ({ children }) => {
     });
   };
 
-  // Hitung total koli dalam stapel & update status otomatis
   const recalculateStapelStatus = (batches, capacity = 1000) => {
     const totalKoli = batches.reduce((sum, b) => sum + (Number(b.koli) || 0), 0);
     if (totalKoli === 0) return "kosong";
@@ -606,8 +805,8 @@ export const WarehouseProvider = ({ children }) => {
     return "sebagian";
   };
 
-  // 1. TAMBAH BARANG MASUK (INBOUND)
-  const addInboundGoods = ({
+  // 1. TAMBAH BARANG MASUK (INBOUND) - TERHUBUNG KE API DATABASE
+  const addInboundGoods = async ({
     stapelId,
     commodityId,
     brand,
@@ -645,6 +844,7 @@ export const WarehouseProvider = ({ children }) => {
       notes,
     };
 
+    // Optimistic UI Update
     setStapels((prevStapels) =>
       prevStapels.map((stapel) => {
         if (stapel.id === stapelId) {
@@ -669,7 +869,7 @@ export const WarehouseProvider = ({ children }) => {
       unit,
       weightPerUnitKg: weightNum,
       totalKg: koliNum * weightNum,
-      operator,
+      operator: currentUser?.name || operator,
       suratJalan: newBatch.suratJalan,
       sourceOrDest: origin || "Pemasok Bulog",
       timestamp: new Date().toISOString(),
@@ -679,21 +879,65 @@ export const WarehouseProvider = ({ children }) => {
 
     setTransactions((prev) => [newTransaction, ...prev]);
 
-    logAuditEvent({
-      action: "INBOUND_ENTRY",
-      target: stapelId,
-      details: `Penerimaan ${koliNum} ${unit} ${commodity.name} (${brand || commodity.name}) di ${stapelId}. Surat Jalan: ${newBatch.suratJalan}, Asal: ${newBatch.origin}. Keterangan: ${notes || "-"}`,
-    });
+    // Kirim langsung ke Endpoint API Backend PostgreSQL
+    try {
+      const res = await fetch("/api/inventory/inbound", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          stapelId,
+          commodityId,
+          brand: newBatch.brand,
+          koli: koliNum,
+          unit,
+          weightPerUnitKg: weightNum,
+          dateIn: newBatch.dateIn,
+          expiryDate: newBatch.expiryDate,
+          origin: newBatch.origin,
+          suratJalan: newBatch.suratJalan,
+          kondisi,
+          notes,
+          operator: currentUser?.name || operator,
+          operatorRole: currentUser?.role || "operator",
+          operatorNip: currentUser?.nip || "-",
+          isOffline: !isOnline,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        // Ambil data stapel dan transaksi termutakhir dari database
+        const [freshStapels, freshTrans, freshAudit] = await Promise.all([
+          fetch("/api/stapels").then((r) => r.json()),
+          fetch("/api/inventory/transactions?limit=100").then((r) => r.json()),
+          fetch("/api/audit-logs?limit=50").then((r) => r.json()),
+        ]);
+
+        if (freshStapels.success && Array.isArray(freshStapels.data)) {
+          setStapels(freshStapels.data);
+        }
+        if (freshTrans.success && Array.isArray(freshTrans.data)) {
+          setTransactions(freshTrans.data);
+        }
+        if (freshAudit.success && Array.isArray(freshAudit.data)) {
+          setAuditLogs(freshAudit.data);
+        }
+      }
+    } catch (err) {
+      console.warn("Gagal simpan inbound ke API, disimpan lokal:", err);
+      if (!isOnline) {
+        setOfflineQueue((prev) => [...prev, newTransaction]);
+      }
+    }
 
     if (!isOnline) {
-      setOfflineQueue((prev) => [...prev, newTransaction]);
       showToast(
         `[Offline] ${koliNum} ${unit} ${commodity.name} dicatat di ${stapelId}. Akan disinkron saat online.`,
         "warning"
       );
     } else {
       showToast(
-        `Sukses! ${koliNum} ${unit} ${commodity.name} berhasil disimpan di ${stapelId}.`,
+        `Sukses! ${koliNum} ${unit} ${commodity.name} berhasil disimpan di ${stapelId} (Tersimpan di PostgreSQL).`,
         "success"
       );
     }
@@ -701,8 +945,8 @@ export const WarehouseProvider = ({ children }) => {
     return newBatch;
   };
 
-  // 2. KELUARKAN BARANG (OUTBOUND DENGAN VALIDASI FIFO)
-  const releaseOutboundGoods = ({
+  // 2. KELUARKAN BARANG (OUTBOUND DENGAN VALIDASI FIFO) - TERHUBUNG KE API DATABASE
+  const releaseOutboundGoods = async ({
     stapelId,
     batchId,
     koliToRelease,
@@ -717,6 +961,7 @@ export const WarehouseProvider = ({ children }) => {
     let weightPerUnit = 50;
     let releasedUnit = "Karung";
 
+    // Optimistic UI Update
     setStapels((prevStapels) =>
       prevStapels.map((stapel) => {
         if (stapel.id !== stapelId) return stapel;
@@ -736,7 +981,7 @@ export const WarehouseProvider = ({ children }) => {
             }
             return batch;
           })
-          .filter((batch) => batch.koli > 0); // Hapus batch jika habis
+          .filter((batch) => batch.koli > 0);
 
         return {
           ...stapel,
@@ -756,7 +1001,7 @@ export const WarehouseProvider = ({ children }) => {
       unit: releasedUnit,
       weightPerUnitKg: weightPerUnit,
       totalKg: koliNum * weightPerUnit,
-      operator,
+      operator: currentUser?.name || operator,
       suratJalan: suratJalan || `DO-${Date.now().toString().slice(-6)}`,
       sourceOrDest: destination || "Distribusi Pangan Bulog",
       timestamp: new Date().toISOString(),
@@ -766,23 +1011,185 @@ export const WarehouseProvider = ({ children }) => {
 
     setTransactions((prev) => [newTransaction, ...prev]);
 
-    logAuditEvent({
-      action: "OUTBOUND_RELEASE",
-      target: stapelId,
-      details: `Penyaluran ${koliNum} ${releasedUnit} ${releasedCommodity} (${releasedBrand || "Bulog"}) dari ${stapelId}. No. DO: ${newTransaction.suratJalan}, Tujuan: ${newTransaction.sourceOrDest}. Keterangan: ${notes || "-"}`,
-    });
+    // Kirim ke API database
+    try {
+      const res = await fetch("/api/inventory/outbound", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          stapelId,
+          batchId,
+          koliToRelease: koliNum,
+          destination,
+          suratJalan: newTransaction.suratJalan,
+          operator: currentUser?.name || operator,
+          operatorRole: currentUser?.role || "operator",
+          operatorNip: currentUser?.nip || "-",
+          notes,
+          isOffline: !isOnline,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        const [freshStapels, freshTrans, freshAudit] = await Promise.all([
+          fetch("/api/stapels").then((r) => r.json()),
+          fetch("/api/inventory/transactions?limit=100").then((r) => r.json()),
+          fetch("/api/audit-logs?limit=50").then((r) => r.json()),
+        ]);
+
+        if (freshStapels.success && Array.isArray(freshStapels.data)) {
+          setStapels(freshStapels.data);
+        }
+        if (freshTrans.success && Array.isArray(freshTrans.data)) {
+          setTransactions(freshTrans.data);
+        }
+        if (freshAudit.success && Array.isArray(freshAudit.data)) {
+          setAuditLogs(freshAudit.data);
+        }
+      }
+    } catch (err) {
+      console.warn("Gagal simpan outbound ke API:", err);
+      if (!isOnline) {
+        setOfflineQueue((prev) => [...prev, newTransaction]);
+      }
+    }
 
     if (!isOnline) {
-      setOfflineQueue((prev) => [...prev, newTransaction]);
-      showToast(
-        `[Offline] ${koliNum} ${releasedUnit} dikeluarkan dari ${stapelId}.`,
-        "warning"
-      );
+      showToast(`[Offline] ${koliNum} ${releasedUnit} dikeluarkan dari ${stapelId}.`, "warning");
     } else {
       showToast(
-        `Sukses! ${koliNum} ${releasedUnit} ${releasedCommodity} berhasil dikeluarkan dari ${stapelId}.`,
+        `Sukses! ${koliNum} ${releasedUnit} ${releasedCommodity} berhasil disalurkan dari ${stapelId} (Tersimpan di DB).`,
         "success"
       );
+    }
+  };
+
+  // 3. CRUD MASTER KOMODITAS (Bisa dipanggil dari UI)
+  const addCommodity = async (commodityData) => {
+    try {
+      const res = await fetch("/api/commodities", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...commodityData,
+          operatorName: currentUser?.name || "Superadmin Bulog",
+          operatorRole: currentUser?.role || "superadmin",
+          operatorNip: currentUser?.nip || "-",
+        }),
+      });
+      const data = await res.json();
+      if (data.success && data.data) {
+        setCommodities((prev) => [...prev, data.data]);
+        showToast(`Komoditas "${data.data.name}" berhasil ditambahkan.`, "success");
+        return data.data;
+      } else {
+        showToast(data.message || "Gagal menambah komoditas", "error");
+      }
+    } catch (e) {
+      console.error(e);
+      showToast("Gagal menghubungi server", "error");
+    }
+  };
+
+  const updateCommodity = async (id, updates) => {
+    try {
+      const res = await fetch(`/api/commodities/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...updates,
+          operatorName: currentUser?.name || "Superadmin Bulog",
+          operatorRole: currentUser?.role || "superadmin",
+          operatorNip: currentUser?.nip || "-",
+        }),
+      });
+      const data = await res.json();
+      if (data.success && data.data) {
+        setCommodities((prev) => prev.map((c) => (c.id === id ? data.data : c)));
+        showToast(`Komoditas "${data.data.name}" berhasil diperbarui.`, "success");
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const deleteCommodity = async (id) => {
+    try {
+      const res = await fetch(`/api/commodities/${id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (data.success) {
+        setCommodities((prev) => prev.filter((c) => c.id !== id));
+        showToast("Komoditas berhasil dihapus.", "success");
+      } else {
+        showToast(data.message, "error");
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // 4. CRUD BATCH GUDANG (Penyesuaian Fisik / Relokasi)
+  const updateBatch = async (batchId, batchUpdates) => {
+    try {
+      const res = await fetch(`/api/inventory/batches/${batchId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...batchUpdates,
+          operatorName: currentUser?.name || "Petugas Gudang",
+          operatorRole: currentUser?.role || "operator",
+          operatorNip: currentUser?.nip || "-",
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        refreshWarehouseData();
+        showToast("Data batch berhasil diperbarui di database.", "success");
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const deleteBatch = async (batchId, reason = "Koreksi fisik") => {
+    try {
+      const res = await fetch(
+        `/api/inventory/batches/${batchId}?reason=${encodeURIComponent(reason)}&operatorName=${encodeURIComponent(
+          currentUser?.name || "Petugas"
+        )}`,
+        { method: "DELETE" }
+      );
+      const data = await res.json();
+      if (data.success) {
+        refreshWarehouseData();
+        showToast("Batch berhasil dihapus.", "info");
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // 5. PENERBITAN BERITA ACARA STOCK OPNAME (BASO)
+  const saveBasoReport = async (basoData) => {
+    try {
+      const res = await fetch("/api/baso", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...basoData,
+          createdById: currentUser?.id,
+          operatorName: currentUser?.name || "Hendra Wijaya, S.T.",
+          operatorRole: currentUser?.role || "kepala_gudang",
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast(`Dokumen BASO ${data.data.reportNumber} berhasil diarsipkan.`, "success");
+        return data.data;
+      }
+    } catch (e) {
+      console.error("Gagal simpan BASO ke API:", e);
     }
   };
 
@@ -800,9 +1207,8 @@ export const WarehouseProvider = ({ children }) => {
     localStorage.removeItem("SIGAP_BULOG_TRANSACTIONS_V4");
     localStorage.setItem("SIGAP_BULOG_STAPELS_V4", JSON.stringify(INITIAL_STAPELS));
     localStorage.setItem("SIGAP_BULOG_TRANSACTIONS_V4", JSON.stringify(INITIAL_TRANSACTIONS));
-    setStapels(INITIAL_STAPELS);
-    setTransactions(INITIAL_TRANSACTIONS);
     showToast("Data prototype berhasil direset ke data awal Kompleks CISKID.", "info");
+    refreshWarehouseData();
   };
 
   // Ringkasan Agregat Gudang
@@ -816,14 +1222,15 @@ export const WarehouseProvider = ({ children }) => {
     const commoditySummary = {};
 
     stapels.forEach((stapel) => {
-      const stapelKoli = stapel.batches.reduce((sum, b) => sum + b.koli, 0);
+      const batches = Array.isArray(stapel.batches) ? stapel.batches : [];
+      const stapelKoli = batches.reduce((sum, b) => sum + (Number(b.koli) || 0), 0);
       if (stapelKoli > 0) {
         stapelOccupied += 1;
       }
 
-      stapel.batches.forEach((b) => {
-        const koli = b.koli || 0;
-        const weightKg = b.weightPerUnitKg || 50;
+      batches.forEach((b) => {
+        const koli = Number(b.koli) || 0;
+        const weightKg = Number(b.weightPerUnitKg) || 50;
         const tonase = (koli * weightKg) / 1000;
 
         totalKoli += koli;
@@ -838,17 +1245,17 @@ export const WarehouseProvider = ({ children }) => {
           criticalItems += 1;
         }
 
-        // Summary per komoditas
-        if (!commoditySummary[b.commodityName]) {
-          commoditySummary[b.commodityName] = {
-            name: b.commodityName,
+        const commName = b.commodityName || b.commodity?.name || b.brand || "Beras";
+        if (!commoditySummary[commName]) {
+          commoditySummary[commName] = {
+            name: commName,
             koli: 0,
             tonase: 0,
-            unit: b.unit,
+            unit: b.unit || "Karung",
           };
         }
-        commoditySummary[b.commodityName].koli += koli;
-        commoditySummary[b.commodityName].tonase += tonase;
+        commoditySummary[commName].koli += koli;
+        commoditySummary[commName].tonase += tonase;
       });
     });
 
@@ -857,7 +1264,7 @@ export const WarehouseProvider = ({ children }) => {
       totalTonase: parseFloat(totalTonase.toFixed(1)),
       stapelOccupied,
       totalStapels: stapels.length,
-      occupancyPercentage: Math.round((stapelOccupied / stapels.length) * 100),
+      occupancyPercentage: stapels.length > 0 ? Math.round((stapelOccupied / stapels.length) * 100) : 0,
       fifoWarnings,
       criticalItems,
       commoditySummary: Object.values(commoditySummary),
@@ -884,6 +1291,8 @@ export const WarehouseProvider = ({ children }) => {
         notificationCount,
         toastMessage,
         warehouseStats,
+        isSyncingDb,
+        refreshWarehouseData,
         toggleOnlineMode,
         addInboundGoods,
         currentUser,
@@ -895,6 +1304,12 @@ export const WarehouseProvider = ({ children }) => {
         toggleUserStatus,
         deleteUser,
         releaseOutboundGoods,
+        addCommodity,
+        updateCommodity,
+        deleteCommodity,
+        updateBatch,
+        deleteBatch,
+        saveBasoReport,
         resetToFactoryData,
         showToast,
         auditLogs,
