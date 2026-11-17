@@ -1,0 +1,42 @@
+# ==============================================================================
+# Git Ignore Configuration
+# ==============================================================================
+
+# AI Agents & Assistants Folder
+.agents/
+.agents
+
+# Environment variables & Local Credentials
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# Dependency directories
+node_modules/
+vendor/
+__pycache__/
+*.py[cod]
+.venv/
+env/
+
+# Build & Output files
+dist/
+build/
+out/
+.next/
+*.log
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE & Editor Settings
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo

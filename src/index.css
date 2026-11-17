@@ -1,0 +1,116 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-blue-50: #EEF2F9;
+  --color-brand-blue-100: #D0DAF0;
+  --color-brand-blue-200: #A3B5E0;
+  --color-brand-blue-300: #6B87C7;
+  --color-brand-blue-400: #3E62AF;
+  --color-brand-blue-500: #1E3D73;
+  --color-brand-blue-600: #193462;
+  --color-brand-blue-700: #142A51;
+  --color-brand-blue-800: #0F2040;
+  --color-brand-blue-900: #0A1630;
+
+  --color-gold-50: #FFF8E7;
+  --color-gold-100: #FFEFC2;
+  --color-gold-200: #FFE08A;
+  --color-gold-300: #FFCF4A;
+  --color-gold-400: #F0A516;
+  --color-gold-500: #D4900F;
+  --color-gold-600: #B87A0B;
+  --color-gold-700: #8C5D08;
+
+  --color-surface: #F8F9FF;
+  --color-surface-container: #E6EEFF;
+  --color-surface-container-low: #EFF4FF;
+  --color-surface-container-lowest: #FFFFFF;
+  --color-on-surface: #0D1C2E;
+
+  --color-status-success: #16A34A;
+  --color-status-success-bg: #F0FDF4;
+  --color-status-success-text: #166534;
+  --color-status-success-border: #BBF7D0;
+
+  --color-status-warning: #F59E0B;
+  --color-status-warning-bg: #FFFBEB;
+  --color-status-warning-text: #B45309;
+  --color-status-warning-border: #FDE68A;
+
+  --color-status-caution: #F97316;
+  --color-status-caution-bg: #FFF7ED;
+
+  --color-status-danger: #EF4444;
+  --color-status-danger-bg: #FEF2F2;
+  --color-status-danger-text: #B91C1C;
+  --color-status-danger-border: #FECACA;
+
+  --color-stack-empty-bg: #DCFCE7;
+  --color-stack-empty-text: #15803D;
+  --color-stack-empty-border: #86EFAC;
+
+  --color-stack-partial-bg: #FFF8E7;
+  --color-stack-partial-text: #8C5D08;
+  --color-stack-partial-border: #FCD34D;
+
+  --color-stack-full-bg: #FEE2E2;
+  --color-stack-full-text: #DC2626;
+  --color-stack-full-border: #FCA5A5;
+
+  --color-stack-inactive-bg: #F1F5F9;
+  --color-stack-inactive-text: #94A3B8;
+
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+@layer base {
+  body {
+    font-family: var(--font-sans);
+    background-color: var(--color-surface);
+    color: var(--color-on-surface);
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
+
+@keyframes laser-sweep {
+  0% { top: 0%; opacity: 0.8; }
+  50% { top: 95%; opacity: 1; }
+  100% { top: 0%; opacity: 0.8; }
+}
+
+.animate-laser {
+  animation: laser-sweep 2s ease-in-out infinite;
+}
