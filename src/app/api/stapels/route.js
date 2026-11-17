@@ -32,22 +32,42 @@ export async function GET(request) {
       ],
     });
 
+    const blockStyles = {
+      A: { colorClass: "bg-[#FFD1D8] text-[#9F1239] border-[#FDA4AF]", baseColor: "pink" },
+      B: { colorClass: "bg-[#FEF08A] text-[#854D0E] border-[#FDE047]", baseColor: "yellow" },
+      C: { colorClass: "bg-[#BBF7D0] text-[#166534] border-[#86EFAC]", baseColor: "green" },
+    };
+
     // Perkaya data dengan agregat koli dan tonase per stapel
     const enriched = stapels.map((s) => {
       let totalKoli = 0;
       let totalKg = 0;
       let oldestDateIn = null;
 
-      s.batches.forEach((b) => {
+      const enrichedBatches = s.batches.map((b) => {
         totalKoli += b.koli;
         totalKg += b.koli * b.weightPerUnitKg;
         if (!oldestDateIn || new Date(b.dateIn) < new Date(oldestDateIn)) {
           oldestDateIn = b.dateIn;
         }
+        return {
+          ...b,
+          commodityName: b.commodity?.name || b.brand,
+          dateIn: b.dateIn ? new Date(b.dateIn).toISOString().split("T")[0] : "",
+          expiryDate: b.expiryDate ? new Date(b.expiryDate).toISOString().split("T")[0] : "",
+        };
       });
+
+      const blkStyle = blockStyles[s.block] || {
+        colorClass: "bg-slate-100 text-slate-700 border-slate-200",
+        baseColor: "gray",
+      };
 
       return {
         ...s,
+        blockColor: blkStyle.colorClass,
+        baseColor: blkStyle.baseColor,
+        batches: enrichedBatches,
         totalKoli,
         totalTonase: parseFloat((totalKg / 1000).toFixed(2)),
         oldestDateIn,
