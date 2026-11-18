@@ -3,23 +3,31 @@
 import React, { useState } from "react";
 import { useWarehouse } from "../../context/WarehouseContext";
 import { CustomSelect } from "../common/CustomSelect";
+import { User, UserRole } from "@/types/auth";
 
-export const AccountManagement = () => {
+export const AccountManagement: React.FC = () => {
   const { currentUser, users, addUser, updateUser, toggleUserStatus, deleteUser, warehouse } =
     useWarehouse();
 
-  const [searchTerm, setSearchTerm] = useState("");
-  const [roleFilter, setRoleFilter] = useState("ALL");
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState(null);
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [roleFilter, setRoleFilter] = useState<string>("ALL");
+  const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
 
   // Form State
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    name: string;
+    email: string;
+    nip: string;
+    role: UserRole;
+    unitGudang: string;
+    password: string;
+  }>({
     name: "",
     email: "",
     nip: "",
     role: "operator",
-    unitGudang: warehouse.name,
+    unitGudang: warehouse?.name || "GBB CISKID",
     password: "",
   });
 
@@ -39,11 +47,11 @@ export const AccountManagement = () => {
   }
 
   // Filtered Users
-  const filteredUsers = users.filter((u) => {
+  const filteredUsers = users.filter((u: User) => {
     const matchesSearch =
       u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.nip?.toLowerCase().includes(searchTerm.toLowerCase());
+      (u.nip || "").toLowerCase().includes(searchTerm.toLowerCase());
     const matchesRole = roleFilter === "ALL" || u.role === roleFilter;
     return matchesSearch && matchesRole;
   });
@@ -55,26 +63,26 @@ export const AccountManagement = () => {
       email: "",
       nip: "",
       role: "operator",
-      unitGudang: warehouse.name,
+      unitGudang: warehouse?.name || "GBB CISKID",
       password: "",
     });
     setIsAddModalOpen(true);
   };
 
-  const handleOpenEditModal = (u) => {
+  const handleOpenEditModal = (u: User) => {
     setEditingUser(u);
     setFormData({
       name: u.name,
       email: u.email,
       nip: u.nip || "",
       role: u.role,
-      unitGudang: u.unitGudang || warehouse.name,
+      unitGudang: u.unitGudang || warehouse?.name || "GBB CISKID",
       password: "",
     });
     setIsAddModalOpen(true);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim() || !formData.email.trim()) {
       alert("Nama dan email wajib diisi.");
@@ -82,7 +90,7 @@ export const AccountManagement = () => {
     }
 
     if (editingUser) {
-      const updates = {
+      const updates: any = {
         name: formData.name,
         email: formData.email,
         nip: formData.nip,
@@ -111,7 +119,7 @@ export const AccountManagement = () => {
     setIsAddModalOpen(false);
   };
 
-  const getRoleBadge = (role) => {
+  const getRoleBadge = (role: string) => {
     switch (role) {
       case "superadmin":
         return {
@@ -180,7 +188,7 @@ export const AccountManagement = () => {
             Superadmin Pusat
           </span>
           <p className="text-2xl font-bold font-mono text-purple-700">
-            {users.filter((u) => u.role === "superadmin").length}
+            {users.filter((u: User) => u.role === "superadmin").length}
           </p>
           <p className="text-[11px] text-purple-600 mt-1">Hak akses penuh</p>
         </div>
@@ -190,7 +198,7 @@ export const AccountManagement = () => {
             Kepala Gudang
           </span>
           <p className="text-2xl font-bold font-mono text-[#1E3D73]">
-            {users.filter((u) => u.role === "kepala_gudang").length}
+            {users.filter((u: User) => u.role === "kepala_gudang").length}
           </p>
           <p className="text-[11px] text-blue-600 mt-1">Penanggung jawab unit</p>
         </div>
@@ -200,7 +208,7 @@ export const AccountManagement = () => {
             Operator Lapangan
           </span>
           <p className="text-2xl font-bold font-mono text-amber-700">
-            {users.filter((u) => u.role === "operator").length}
+            {users.filter((u: User) => u.role === "operator").length}
           </p>
           <p className="text-[11px] text-amber-600 mt-1">Petugas scan & opname</p>
         </div>
@@ -258,12 +266,12 @@ export const AccountManagement = () => {
             <tbody className="divide-y divide-slate-100">
               {filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="p-8 text-center text-slate-400">
+                  <td colSpan={7} className="p-8 text-center text-slate-400">
                     Tidak ada akun pengguna yang sesuai kriteria pencarian.
                   </td>
                 </tr>
               ) : (
-                filteredUsers.map((u) => {
+                filteredUsers.map((u: User) => {
                   const roleBadge = getRoleBadge(u.role);
                   const isCurrent = currentUser?.id === u.id;
 
@@ -316,7 +324,7 @@ export const AccountManagement = () => {
                       </td>
 
                       <td className="p-3.5 text-slate-500 text-[11px] font-mono">
-                        {u.lastLogin || "-"}
+                        {u.lastLogin ? String(u.lastLogin) : "-"}
                       </td>
 
                       <td className="p-3.5 text-center">
@@ -339,7 +347,7 @@ export const AccountManagement = () => {
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             onClick={() => handleOpenEditModal(u)}
-                            className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-[#1E3D73] transition-colors"
+                            className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-[#1E3D73] transition-colors cursor-pointer"
                             title="Edit Akun"
                           >
                             <span className="material-symbols-outlined text-[18px]">edit</span>
@@ -351,7 +359,7 @@ export const AccountManagement = () => {
                                   deleteUser(u.id);
                                 }
                               }}
-                              className="p-1.5 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600 transition-colors"
+                              className="p-1.5 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600 transition-colors cursor-pointer"
                               title="Hapus Akun"
                             >
                               <span className="material-symbols-outlined text-[18px]">delete</span>
@@ -383,7 +391,7 @@ export const AccountManagement = () => {
               </div>
               <button
                 onClick={() => setIsAddModalOpen(false)}
-                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500"
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[18px]">close</span>
               </button>
@@ -438,7 +446,7 @@ export const AccountManagement = () => {
                   </label>
                   <CustomSelect
                     value={formData.role}
-                    onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                    onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole })}
                     size="sm"
                     options={[
                       { value: "operator", label: "Operator Gudang", icon: "person" },
@@ -478,13 +486,13 @@ export const AccountManagement = () => {
                 <button
                   type="button"
                   onClick={() => setIsAddModalOpen(false)}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold"
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold cursor-pointer"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-[#1E3D73] hover:bg-[#162D55] text-white rounded-xl text-xs font-bold shadow-sm"
+                  className="px-4 py-2 bg-[#1E3D73] hover:bg-[#162D55] text-white rounded-xl text-xs font-bold shadow-sm cursor-pointer"
                 >
                   {editingUser ? "Simpan Perubahan" : "Simpan Pengguna"}
                 </button>
