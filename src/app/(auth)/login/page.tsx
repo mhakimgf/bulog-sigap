@@ -6,7 +6,7 @@ import { useWarehouse } from "../../../context/WarehouseContext";
 import { LoginPage } from "../../../components/auth/LoginPage";
 import { Toast } from "../../../components/common/Toast";
 
-export default function LoginRoutePage() {
+export default function LoginRoutePage(): React.ReactElement {
   const { currentUser } = useWarehouse();
   const router = useRouter();
 
