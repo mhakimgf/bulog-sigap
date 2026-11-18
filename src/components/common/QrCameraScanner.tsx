@@ -6,7 +6,7 @@ import { Html5Qrcode } from "html5-qrcode";
 export interface QrCameraScannerProps {
   onScanSuccess?: (decodedText: string) => void;
   onClose?: () => void;
-  activeStapelId?: string;
+  activeStapelId?: string | null;
 }
 
 export const QrCameraScanner: React.FC<QrCameraScannerProps> = ({

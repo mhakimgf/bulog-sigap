@@ -2,11 +2,13 @@
 
 import React, { useState } from "react";
 import confetti from "canvas-confetti";
-import { useWarehouse, calculateAgingDays } from "../../context/WarehouseContext";
+import { useWarehouse } from "../../context/WarehouseContext";
+import { calculateAgingDays } from "../../lib/calculations";
 import { OperatorHeader } from "./OperatorHeader";
 import { QrCameraScanner } from "../common/QrCameraScanner";
+import { Stapel, Batch } from "../../types/warehouse";
 
-export const OutboundFifoForm = () => {
+export const OutboundFifoForm: React.FC = () => {
   const {
     stapels,
     releaseOutboundGoods,
@@ -18,28 +20,37 @@ export const OutboundFifoForm = () => {
   } = useWarehouse();
 
   // Active stapel for release
-  const [currentStapelId, setCurrentStapelId] = useState(selectedStapelId || "G1-A2");
+  const [currentStapelId, setCurrentStapelId] = useState<string>(selectedStapelId || "G1-A2");
   // Wajib scan QR tiang tumpukan terlebih dahulu sebelum membuka form penyaluran
-  const [isStapelScanned, setIsStapelScanned] = useState(false);
-  const [scannerMode, setScannerMode] = useState("camera"); // 'camera' | 'simulation'
-  const [manualCodeInput, setManualCodeInput] = useState("");
+  const [isStapelScanned, setIsStapelScanned] = useState<boolean>(false);
+  const [scannerMode, setScannerMode] = useState<"camera" | "simulation">("camera");
+  const [manualCodeInput, setManualCodeInput] = useState<string>("");
 
-  const currentStapel =
+  const currentStapel: Stapel =
     stapels.find((s) => s.id === currentStapelId) ||
-    stapels.find((s) => s.batches.length > 0) ||
-    stapels[0];
+    stapels.find((s) => (s.batches || []).length > 0) ||
+    stapels[0] || {
+      id: currentStapelId,
+      gudang: "Gudang 1",
+      block: "A",
+      number: 1,
+      name: `Stapel ${currentStapelId}`,
+      capacityKoli: 1000,
+      status: "kosong",
+      batches: [],
+    };
 
   // Cari batch tertua di stapel ini untuk acuan FIFO
-  const sortedBatches = React.useMemo(() => {
+  const sortedBatches: Batch[] = React.useMemo(() => {
     return [...(currentStapel?.batches || [])].sort((a, b) => {
-      return new Date(a.dateIn) - new Date(b.dateIn);
+      return new Date(a.dateIn).getTime() - new Date(b.dateIn).getTime();
     });
   }, [currentStapel]);
 
-  const oldestBatch = sortedBatches[0] || null;
+  const oldestBatch: Batch | null = sortedBatches[0] || null;
 
   // Selected batch state
-  const [selectedBatchId, setSelectedBatchId] = useState(() => {
+  const [selectedBatchId, setSelectedBatchId] = useState<string>(() => {
     return oldestBatch ? oldestBatch.id : "";
   });
 
@@ -48,29 +59,30 @@ export const OutboundFifoForm = () => {
     if (oldestBatch) {
       setSelectedBatchId(oldestBatch.id);
     }
-  }, [currentStapelId]);
+  }, [currentStapelId, oldestBatch]);
 
-  const activeBatch =
+  const activeBatch: Batch | null =
     currentStapel?.batches?.find((b) => b.id === selectedBatchId) || oldestBatch;
 
   // Form states
-  const [koliToRelease, setKoliToRelease] = useState("100");
-  const [destination, setDestination] = useState("Pasar Induk Beras Cipinang (PIBC)");
-  const [suratJalan, setSuratJalan] = useState("DO-SPHP-2026-1115-12");
-  const [fifoOverrideConfirmed, setFifoOverrideConfirmed] = useState(false);
-  const [overrideReason, setOverrideReason] = useState("");
-  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [koliToRelease, setKoliToRelease] = useState<string>("100");
+  const [destination, setDestination] = useState<string>("Pasar Induk Beras Cipinang (PIBC)");
+  const [suratJalan, setSuratJalan] = useState<string>("DO-SPHP-2026-1115-12");
+  const [fifoOverrideConfirmed, setFifoOverrideConfirmed] = useState<boolean>(false);
+  const [overrideReason, setOverrideReason] = useState<string>("");
+  const [isSubmitted, setIsSubmitted] = useState<boolean>(false);
 
   // Cek apakah batch yang dipilih BUKAN batch tertua
-  const isFifoViolation =
-    activeBatch && oldestBatch && activeBatch.id !== oldestBatch.id;
+  const isFifoViolation = Boolean(
+    activeBatch && oldestBatch && activeBatch.id !== oldestBatch.id
+  );
 
-  const currentTotalKoli = currentStapel?.batches?.reduce((sum, b) => sum + b.koli, 0) || 0;
+  const currentTotalKoli = currentStapel?.batches?.reduce((sum, b) => sum + (b.koli || 0), 0) || 0;
   const capacity = currentStapel?.capacityKoli || 1000;
   const occupancyPercent = Math.min(100, Math.round((currentTotalKoli / capacity) * 100));
 
   // Handler saat scan QR berhasil (dari kamera atau simulasi)
-  const handleScanStapel = (scannedCode) => {
+  const handleScanStapel = (scannedCode: string) => {
     if (!scannedCode) return;
     const cleanCode = scannedCode.trim().toUpperCase();
     const foundStapel = stapels.find(
@@ -106,7 +118,7 @@ export const OutboundFifoForm = () => {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (isFreezeMode) {
       alert("Penyaluran barang keluar ditangguhkan sementara karena Sesi Stock Opname sedang berlangsung.");
@@ -414,7 +426,7 @@ export const OutboundFifoForm = () => {
                       </span>
                     </div>
                     <p className="text-[11px] text-emerald-700 truncate">
-                      {currentStapel.gudang} • Blok {currentStapel.block || "A"}, No. {currentStapel.number || "1"}
+                      {currentStapel.gudang} • Blok {currentStapel.block || currentStapel.row || "A"}, No. {currentStapel.number || currentStapel.col || "1"}
                     </p>
                   </div>
                 </div>
@@ -448,7 +460,7 @@ export const OutboundFifoForm = () => {
                 </div>
               </div>
 
-              {currentStapel.batches.length === 0 ? (
+              {(currentStapel.batches || []).length === 0 ? (
                 <div className="text-center py-6 text-slate-400 text-xs">
                   Tidak ada muatan barang di stapel ini.
                 </div>
@@ -483,7 +495,7 @@ export const OutboundFifoForm = () => {
                         <div className="flex items-start justify-between gap-2 mb-1.5">
                           <div>
                             <span className="font-bold text-xs text-[#0A1630] block">
-                              {batch.commodityName}
+                              {batch.commodityName || batch.brand}
                             </span>
                             <span className="text-[11px] text-slate-500 font-mono">
                               {batch.batchNo} • {batch.brand}
@@ -494,13 +506,13 @@ export const OutboundFifoForm = () => {
                               {batch.koli} {batch.unit}
                             </span>
                             <span className="text-[10px] text-slate-400">
-                              {( (batch.koli * batch.weightPerUnitKg) / 1000 ).toFixed(1)} Ton
+                              {(((batch.koli || 0) * (batch.weightPerUnitKg || 50)) / 1000).toFixed(1)} Ton
                             </span>
                           </div>
                         </div>
 
                         <div className="flex items-center justify-between text-[11px] pt-2 border-t border-slate-100">
-                          <span className="text-slate-500 font-mono">Masuk: {batch.dateIn}</span>
+                          <span className="text-slate-500 font-mono">Masuk: {String(batch.dateIn)}</span>
                           <span
                             className={`font-mono font-bold px-2 py-0.5 rounded text-[10px] ${
                               agingDays >= 150
