@@ -10,15 +10,18 @@ export interface QrGeneratorModalProps {
   isOpen: boolean;
   onClose: () => void;
   defaultStapelId?: string;
+  initialStapelId?: string;
 }
 
 export const QrGeneratorModal: React.FC<QrGeneratorModalProps> = ({
   isOpen,
   onClose,
   defaultStapelId = "G1-A2",
+  initialStapelId,
 }) => {
+  const initialId = initialStapelId || defaultStapelId;
   const { stapels, logAuditEvent } = useWarehouse();
-  const [selectedStapelId, setSelectedStapelId] = useState<string>(defaultStapelId);
+  const [selectedStapelId, setSelectedStapelId] = useState<string>(initialId);
   const [qrMode, setQrMode] = useState<"single" | "gudang" | "all">("single");
   const [selectedGudangFilter, setSelectedGudangFilter] = useState<string>("Gudang 1");
   const [qrCodeDataUrls, setQrCodeDataUrls] = useState<Record<string, string>>({});
@@ -26,8 +29,8 @@ export const QrGeneratorModal: React.FC<QrGeneratorModalProps> = ({
 
   // Sync defaultStapelId when prop changes
   useEffect(() => {
-    if (defaultStapelId) setSelectedStapelId(defaultStapelId);
-  }, [defaultStapelId]);
+    if (initialId) setSelectedStapelId(initialId);
+  }, [initialId]);
 
   // Generate QR Codes via 'qrcode' package
   useEffect(() => {

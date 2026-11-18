@@ -11,8 +11,23 @@ import { AccountManagement } from "../admin/AccountManagement";
 import { QrGeneratorModal } from "./QrGeneratorModal";
 import { StockOpnameModal } from "./StockOpnameModal";
 import { AuditTrailView } from "./AuditTrailView";
+import { Stapel, Batch } from "@/types/warehouse";
 
-export const WarehouseDashboard = ({
+export interface WarehouseDashboardProps {
+  initialTab?: string;
+  initialBasoOpen?: boolean;
+  initialQrOpen?: boolean;
+  initialOpnameOpen?: boolean;
+}
+
+interface ExtendedBatch extends Batch {
+  stapelId: string;
+  gudang: string;
+  block: string;
+  number: number;
+}
+
+export const WarehouseDashboard: React.FC<WarehouseDashboardProps> = ({
   initialTab = "denah",
   initialBasoOpen = false,
   initialQrOpen = false,
@@ -35,16 +50,23 @@ export const WarehouseDashboard = ({
   } = useWarehouse();
 
   // Active Gudang tab: 'Gudang 1' | 'Gudang 2' | 'Gudang 3' | 'Gudang 4' | 'Gudang 5' | 'ALL'
-  const [selectedGudang, setSelectedGudang] = useState("Gudang 1");
-  const [commodityFilter, setCommodityFilter] = useState("ALL");
-  const [selectedStapelForModal, setSelectedStapelForModal] = useState(null);
-  const [hoveredStapel, setHoveredStapel] = useState(null);
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-  const [isQrModalOpen, setIsQrModalOpen] = useState(initialQrOpen || initialTab === "qr");
-  const [isOpnameModalOpen, setIsOpnameModalOpen] = useState(initialOpnameOpen || initialTab === "opname");
-  const [qrDefaultStapelId, setQrDefaultStapelId] = useState("G1-A2");
-  const [mobileViewMode, setMobileViewMode] = useState("denah"); // 'denah' | 'cards'
-  const [stapelTooltip, setStapelTooltip] = useState({
+  const [selectedGudang, setSelectedGudang] = useState<string>("Gudang 1");
+  const [commodityFilter, setCommodityFilter] = useState<string>("ALL");
+  const [selectedStapelForModal, setSelectedStapelForModal] = useState<Stapel | null>(null);
+  const [hoveredStapel, setHoveredStapel] = useState<Stapel | null>(null);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
+  const [isQrModalOpen, setIsQrModalOpen] = useState<boolean>(initialQrOpen || initialTab === "qr");
+  const [isOpnameModalOpen, setIsOpnameModalOpen] = useState<boolean>(initialOpnameOpen || initialTab === "opname");
+  const [qrDefaultStapelId, setQrDefaultStapelId] = useState<string>("G1-A2");
+  const [mobileViewMode, setMobileViewMode] = useState<"denah" | "cards">("denah");
+  const [stapelTooltip, setStapelTooltip] = useState<{
+    visible: boolean;
+    stapel: Stapel | null;
+    top: number;
+    left: number;
+    placement: "top" | "bottom";
+    arrowLeft: number;
+  }>({
     visible: false,
     stapel: null,
     top: 0,
@@ -52,8 +74,8 @@ export const WarehouseDashboard = ({
     placement: "bottom", // 'top' | 'bottom'
     arrowLeft: 160,
   });
-  const [isBasoOpen, setIsBasoOpen] = useState(initialBasoOpen || initialTab === "baso");
-  const [sidebarMenu, setSidebarMenu] = useState(
+  const [isBasoOpen, setIsBasoOpen] = useState<boolean>(initialBasoOpen || initialTab === "baso");
+  const [sidebarMenu, setSidebarMenu] = useState<string>(
     initialTab === "accounts"
       ? "accounts"
       : initialTab === "mutasi"
@@ -64,7 +86,7 @@ export const WarehouseDashboard = ({
   );
 
   // Handler posisi tooltip/popover interaktif menempel pada kotak grid tumpukan (bukan kursor)
-  const handleStapelMouseEnter = (e, stapel) => {
+  const handleStapelMouseEnter = (e: React.MouseEvent<HTMLDivElement>, stapel: Stapel) => {
     // Matikan popover hover mengambang pada HP / layar sentuh agar tidak menutupi tampilan
     if (typeof window !== "undefined") {
       if (window.innerWidth < 1024 || (window.matchMedia && window.matchMedia("(pointer: coarse)").matches)) {
@@ -80,7 +102,7 @@ export const WarehouseDashboard = ({
 
     // Tentukan vertikal: jika ruang di bawah tidak cukup (misal Blok C paling bawah), muncul di atas
     let top;
-    let placement = "bottom";
+    let placement: "top" | "bottom" = "bottom";
 
     if (rect.bottom + tooltipHeight + margin > winH && rect.top > tooltipHeight + margin) {
       top = rect.top - tooltipHeight - 10;
@@ -130,9 +152,9 @@ export const WarehouseDashboard = ({
 
   // Batches for aging table
   const allBatches = React.useMemo(() => {
-    const list = [];
-    stapels.forEach((stapel) => {
-      stapel.batches.forEach((b) => {
+    const list: ExtendedBatch[] = [];
+    stapels.forEach((stapel: Stapel) => {
+      (stapel.batches || []).forEach((b: Batch) => {
         list.push({
           ...b,
           stapelId: stapel.id,
@@ -142,7 +164,7 @@ export const WarehouseDashboard = ({
         });
       });
     });
-    return list.sort((a, b) => new Date(a.dateIn) - new Date(b.dateIn));
+    return list.sort((a, b) => new Date(a.dateIn).getTime() - new Date(b.dateIn).getTime());
   }, [stapels]);
 
   // Filtered batches
@@ -155,12 +177,12 @@ export const WarehouseDashboard = ({
     return matchGudang && matchComm;
   });
 
-  const handleOpenStapelDetail = (stapelId) => {
-    const s = stapels.find((item) => item.id === stapelId);
+  const handleOpenStapelDetail = (stapelId: string) => {
+    const s = stapels.find((item: Stapel) => item.id === stapelId);
     if (s) setSelectedStapelForModal(s);
   };
 
-  const handleSwitchToOperatorWithStapel = (stapelId, action = "detail") => {
+  const handleSwitchToOperatorWithStapel = (stapelId: string, action = "detail") => {
     setSelectedStapelId(stapelId);
     setActiveView("operator");
     if (action === "inbound") setOperatorScreen("inbound");
@@ -169,21 +191,21 @@ export const WarehouseDashboard = ({
   };
 
   // Helper render stapel card di dalam denah 2D dengan INFORMASI SINGKAT + HOVER POPOVER KOMODITAS
-  const renderStapelBox = (stapel) => {
+  const renderStapelBox = (stapel: Stapel) => {
     if (!stapel) return null;
     const batches = Array.isArray(stapel.batches) ? stapel.batches : [];
-    const totalKoli = batches.reduce((sum, b) => sum + (b?.koli || 0), 0);
+    const totalKoli = batches.reduce((sum: number, b: Batch) => sum + (b?.koli || 0), 0);
     const capacity = stapel.capacityKoli || 1000;
     const percent = Math.min(100, Math.round((totalKoli / capacity) * 100));
     const firstBatch = batches[0];
 
-    const totalTonase = batches.reduce((sum, b) => {
+    const totalTonase = batches.reduce((sum: number, b: Batch) => {
       return sum + ((b?.koli || 0) * (b?.weightPerUnitKg || 50)) / 1000;
     }, 0);
 
     // Cek apakah ada batch yang mendekati/melewati batas masa simpan
     const hasFifoAlert = batches.some(
-      (b) => calculateAgingDays(b?.dateIn) >= 150
+      (b: Batch) => calculateAgingDays(b?.dateIn) >= 150
     );
 
     // Warna blok sesuai denah blueprint user:
@@ -709,7 +731,7 @@ export const WarehouseDashboard = ({
                     </span>
                   </div>
                   <p className="text-base sm:text-2xl font-bold font-mono text-[#0A1630] truncate">
-                    {warehouseStats.totalTonase.toLocaleString("id-ID")}{" "}
+                    {(warehouseStats.totalTonase ?? warehouseStats.totalOccupiedTonase ?? 0).toLocaleString("id-ID")}{" "}
                     <span className="text-[10px] sm:text-xs font-normal text-slate-500">Ton</span>
                   </p>
                   <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5 truncate">
@@ -727,7 +749,7 @@ export const WarehouseDashboard = ({
                     </span>
                   </div>
                   <p className="text-base sm:text-2xl font-bold font-mono text-[#0A1630] truncate">
-                    {warehouseStats.totalKoli.toLocaleString("id-ID")}{" "}
+                    {(warehouseStats.totalKoli ?? warehouseStats.totalOccupiedKoli ?? 0).toLocaleString("id-ID")}{" "}
                     <span className="text-[10px] sm:text-xs font-normal text-slate-500">Koli</span>
                   </p>
                   <p className="text-[10px] sm:text-xs text-emerald-700 mt-0.5 font-semibold truncate">
@@ -823,7 +845,7 @@ export const WarehouseDashboard = ({
               {/* Selector Pilihan Gudang (1 sampai 5 + Site Plan) */}
               <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full no-scrollbar">
                 <span className="text-xs font-bold text-slate-500 whitespace-nowrap mr-1 hidden sm:inline">Pilih:</span>
-                {warehouse.units.map((unit) => (
+                {(warehouse.units || []).map((unit) => (
                   <button
                     key={unit.id}
                     onClick={() => setSelectedGudang(unit.name)}
@@ -914,7 +936,7 @@ export const WarehouseDashboard = ({
                           number: num,
                           name: `Stapel ${blockLetter}${num}`,
                           capacityKoli: 1000,
-                          status: "kosong",
+                          status: "kosong" as const,
                           batches: [],
                         };
                       });
@@ -1008,7 +1030,7 @@ export const WarehouseDashboard = ({
                           number: num,
                           name: `Stapel ${blockLetter}${num}`,
                           capacityKoli: 1000,
-                          status: "kosong",
+                          status: "kosong" as const,
                           batches: [],
                         };
                       });
@@ -1294,7 +1316,7 @@ export const WarehouseDashboard = ({
                             {batch.batchNo} • {batch.koli} {batch.unit}
                           </span>
                         </td>
-                        <td className="py-3 px-3 font-mono text-slate-600">{batch.dateIn}</td>
+                        <td className="py-3 px-3 font-mono text-slate-600">{String(batch.dateIn)}</td>
                         <td className="py-3 px-3">
                           <div className="space-y-1">
                             <span className="font-mono font-bold text-slate-800">
@@ -1370,7 +1392,7 @@ export const WarehouseDashboard = ({
                       <span className="font-mono font-bold text-slate-800">{trx.stapelId}</span>
                     </div>
                     <span className="font-mono text-[10px] text-slate-400">
-                      {trx.timestamp.slice(11, 16)}
+                      {String(trx.timestamp || "").slice(11, 16)}
                     </span>
                   </div>
 

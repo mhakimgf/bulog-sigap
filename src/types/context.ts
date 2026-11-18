@@ -12,6 +12,8 @@ export interface WarehouseStats {
   totalCapacityTonase: number;
   totalOccupiedTonase: number;
   totalOccupiedKoli: number;
+  totalTonase?: number;
+  totalKoli?: number;
   occupancyPercentage: number;
   fifoWarnings: number;
   criticalItems: number;

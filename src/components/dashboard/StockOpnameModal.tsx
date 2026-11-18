@@ -9,6 +9,7 @@ export interface StockOpnameModalProps {
   isOpen: boolean;
   onClose: () => void;
   onOpenBaso?: () => void;
+  initialGudang?: string;
 }
 
 export interface OpnameRecordItem {
