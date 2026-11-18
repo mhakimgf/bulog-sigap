@@ -15,13 +15,17 @@ import {
   calculateOpnamePhysical,
   calculateVariance,
 } from "../lib/calculations";
+import { WarehouseContextType, ToastMessageData } from "../types/context";
+import { User } from "../types/auth";
+import { AuditLog } from "../types/audit";
+import { Warehouse, Stapel, Commodity, Transaction, Batch, StapelStatusType } from "../types/warehouse";
 
 export { calculateAgingDays, getShelfLifeStatus, calculateOpnamePhysical, calculateVariance };
 
-const WarehouseContext = createContext(null);
+const WarehouseContext = createContext<WarehouseContextType | null>(null);
 
 // Initial Audit Trail Data (sesuai standar tata kelola BUMN Bulog)
-const INITIAL_AUDIT_LOGS = [
+const INITIAL_AUDIT_LOGS: AuditLog[] = [
   {
     id: "AUD-20261115-001",
     timestamp: "2026-11-15T08:00:12",
@@ -57,10 +61,7 @@ const INITIAL_AUDIT_LOGS = [
   },
 ];
 
-/**
- * @returns {import('../types/context').WarehouseContextType}
- */
-export const useWarehouse = () => {
+export const useWarehouse = (): WarehouseContextType => {
   const context = useContext(WarehouseContext);
   if (!context) {
     throw new Error("useWarehouse must be used within a WarehouseProvider");
@@ -68,29 +69,29 @@ export const useWarehouse = () => {
   return context;
 };
 
-export const WarehouseProvider = ({ children }) => {
+export const WarehouseProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const router = useRouter();
   const pathname = usePathname();
-  const [warehouse, setWarehouse] = useState(INITIAL_WAREHOUSE);
-  const [commodities, setCommodities] = useState(COMMODITIES);
-  const [isOnline, setIsOnline] = useState(true);
-  const [offlineQueue, setOfflineQueue] = useState([]);
-  const [activeView, setActiveView] = useState("dashboard");
-  const [operatorScreen, setOperatorScreen] = useState("home");
-  const [selectedStapelId, setSelectedStapelId] = useState("G1-A2");
-  const [notificationCount, setNotificationCount] = useState(3);
-  const [toastMessage, setToastMessage] = useState(null);
+  const [warehouse, setWarehouse] = useState<Warehouse>(INITIAL_WAREHOUSE);
+  const [commodities, setCommodities] = useState<Commodity[]>(COMMODITIES);
+  const [isOnline, setIsOnline] = useState<boolean>(true);
+  const [offlineQueue, setOfflineQueue] = useState<any[]>([]);
+  const [activeView, setActiveView] = useState<string>("dashboard");
+  const [operatorScreen, setOperatorScreen] = useState<string>("home");
+  const [selectedStapelId, setSelectedStapelId] = useState<string>("G1-A2");
+  const [notificationCount, setNotificationCount] = useState<number>(3);
+  const [toastMessage, setToastMessage] = useState<ToastMessageData | null>(null);
 
   // Authentication & Core Data States
-  const [users, setUsers] = useState(INITIAL_USERS);
-  const [currentUser, setCurrentUser] = useState(null);
-  const [stapels, setStapels] = useState(INITIAL_STAPELS);
-  const [transactions, setTransactions] = useState(INITIAL_TRANSACTIONS);
-  const [auditLogs, setAuditLogs] = useState(INITIAL_AUDIT_LOGS);
-  const [isFreezeMode, setIsFreezeMode] = useState(false);
-  const [opnameRecords, setOpnameRecords] = useState({});
-  const [isHydrated, setIsHydrated] = useState(false);
-  const [isSyncingDb, setIsSyncingDb] = useState(false);
+  const [users, setUsers] = useState<User[]>(INITIAL_USERS);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [stapels, setStapels] = useState<Stapel[]>(INITIAL_STAPELS);
+  const [transactions, setTransactions] = useState<Transaction[]>(INITIAL_TRANSACTIONS);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>(INITIAL_AUDIT_LOGS);
+  const [isFreezeMode, setIsFreezeMode] = useState<boolean>(false);
+  const [opnameRecords, setOpnameRecords] = useState<Record<string, any>>({});
+  const [isHydrated, setIsHydrated] = useState<boolean>(false);
+  const [isSyncingDb, setIsSyncingDb] = useState<boolean>(false);
 
   // 1. Sinkronisasi Data Realtime dari PostgreSQL via REST API
   const refreshWarehouseData = useCallback(async () => {
@@ -141,8 +142,8 @@ export const WarehouseProvider = ({ children }) => {
       }
 
       if (resOpname.status === "fulfilled" && resOpname.value?.success && Array.isArray(resOpname.value.data)) {
-        const recordMap = {};
-        resOpname.value.data.forEach((r) => {
+        const recordMap: Record<string, any> = {};
+        resOpname.value.data.forEach((r: any) => {
           recordMap[r.stapelId] = r;
         });
         setOpnameRecords(recordMap);
@@ -248,7 +249,7 @@ export const WarehouseProvider = ({ children }) => {
   }, [isFreezeMode, opnameRecords, isHydrated]);
 
   // Log Audit Event Helper (tersimpan ke state dan API database)
-  const logAuditEvent = async ({ action, target, details, meta = {} }) => {
+  const logAuditEvent = async ({ action, target, details, meta = {} }: { action: string; target: string; details: string; meta?: any }) => {
     const newLog = {
       id: `AUD-${Date.now().toString().slice(-8)}`,
       timestamp: new Date().toISOString(),
@@ -258,7 +259,7 @@ export const WarehouseProvider = ({ children }) => {
       action,
       target,
       details,
-      ipAddress: meta.ipAddress || "192.168.0.115 (LAN Bulog)",
+      ipAddress: meta?.ipAddress || "192.168.0.115 (LAN Bulog)",
     };
 
     setAuditLogs((prev) => [newLog, ...prev]);
@@ -320,7 +321,7 @@ export const WarehouseProvider = ({ children }) => {
     peakKoli = 0,
     damagedKoli = 0,
     note = "",
-  }) => {
+  }: any) => {
     const stapel = stapels.find((s) => s.id === stapelId);
     const bookKoli = stapel ? stapel.batches.reduce((sum, b) => sum + (b.koli || 0), 0) : 0;
 
@@ -419,7 +420,7 @@ export const WarehouseProvider = ({ children }) => {
   };
 
   // Login handler terhubung ke API backend + fallback lokal
-  const login = async (emailOrNip, password) => {
+  const login = async (emailOrNip: string, password?: string) => {
     const trimmed = (emailOrNip || "").trim().toLowerCase();
     const trimmedPass = (password || "").trim();
 
@@ -538,7 +539,7 @@ export const WarehouseProvider = ({ children }) => {
   };
 
   // Router-aware screen navigation for operators
-  const handleSetOperatorScreen = (screen, stapelId = null) => {
+  const handleSetOperatorScreen = (screen: string, stapelId: string | null = null) => {
     setOperatorScreen(screen);
     try {
       if (screen === "inbound") router.push("/operator/inbound");
@@ -556,7 +557,7 @@ export const WarehouseProvider = ({ children }) => {
   };
 
   // Router-aware view switcher (dashboard vs operator)
-  const handleSetActiveView = (view) => {
+  const handleSetActiveView = (view: string) => {
     setActiveView(view);
     try {
       if (view === "operator") router.push("/operator");
@@ -582,8 +583,8 @@ export const WarehouseProvider = ({ children }) => {
   }, [pathname]);
 
   // User Management
-  const addUser = async (userData) => {
-    const newUser = {
+  const addUser = async (userData: any) => {
+    const newUser: User = {
       id: `usr-${Date.now().toString().slice(-6)}`,
       name: userData.name,
       email: userData.email,
@@ -591,7 +592,7 @@ export const WarehouseProvider = ({ children }) => {
       password: userData.password || "bulog123",
       role: userData.role || "operator",
       unitGudang: userData.unitGudang || "GBB CISKID",
-      status: "aktif",
+      status: "aktif" as const,
       lastLogin: "Belum pernah",
     };
     setUsers((prev) => [newUser, ...prev]);
@@ -625,10 +626,10 @@ export const WarehouseProvider = ({ children }) => {
     return newUser;
   };
 
-  const updateUser = async (userId, updates) => {
+  const updateUser = async (userId: string, updates: any) => {
     setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, ...updates } : u)));
     if (currentUser?.id === userId) {
-      setCurrentUser((prev) => ({ ...prev, ...updates }));
+      setCurrentUser((prev) => (prev ? { ...prev, ...updates } : null));
     }
 
     try {
@@ -655,8 +656,8 @@ export const WarehouseProvider = ({ children }) => {
     showToast("Perubahan akun berhasil disimpan.", "success");
   };
 
-  const toggleUserStatus = async (userId) => {
-    let nextStatus = "";
+  const toggleUserStatus = async (userId: string) => {
+    let nextStatus: "aktif" | "nonaktif" = "aktif";
     setUsers((prev) =>
       prev.map((u) => {
         if (u.id === userId) {
@@ -691,7 +692,7 @@ export const WarehouseProvider = ({ children }) => {
     showToast("Status akun berhasil diperbarui.", "info");
   };
 
-  const deleteUser = async (userId) => {
+  const deleteUser = async (userId: string) => {
     setUsers((prev) => prev.filter((u) => u.id !== userId));
 
     try {
@@ -730,8 +731,8 @@ export const WarehouseProvider = ({ children }) => {
     }
   }, [transactions, isHydrated]);
 
-  const showToast = (message, type = "success") => {
-    setToastMessage({ message, type, id: Date.now() });
+  const showToast = (message: string, type = "success") => {
+    setToastMessage({ message, type, id: String(Date.now()) });
     setTimeout(() => {
       setToastMessage(null);
     }, 4000);
@@ -754,8 +755,8 @@ export const WarehouseProvider = ({ children }) => {
     });
   };
 
-  const recalculateStapelStatus = (batches, capacity = 1000) => {
-    const totalKoli = batches.reduce((sum, b) => sum + (Number(b.koli) || 0), 0);
+  const recalculateStapelStatus = (batches: any[], capacity = 1000): StapelStatusType => {
+    const totalKoli = batches.reduce((sum: number, b: any) => sum + (Number(b.koli) || 0), 0);
     if (totalKoli === 0) return "kosong";
     if (totalKoli >= capacity * 0.8) return "penuh";
     return "sebagian";
@@ -776,15 +777,16 @@ export const WarehouseProvider = ({ children }) => {
     kondisi = "Baik",
     notes = "",
     operator = "Budi Santoso",
-  }) => {
+  }: any) => {
     const commodity = commodities.find((c) => c.id === commodityId) || {
       name: commodityId,
     };
     const koliNum = parseInt(koli, 10);
     const weightNum = parseFloat(weightPerUnitKg) || 50;
 
-    const newBatch = {
+    const newBatch: Batch = {
       id: `batch-${Date.now().toString().slice(-4)}`,
+      stapelId,
       batchNo: `Batch #${Math.floor(Math.random() * 80) + 10}`,
       commodityId,
       commodityName: commodity.name,
@@ -815,10 +817,11 @@ export const WarehouseProvider = ({ children }) => {
       })
     );
 
-    const newTransaction = {
+    const newTransaction: Transaction = {
       id: `TRX-${Date.now().toString().slice(-8)}`,
-      type: "MASUK",
+      type: "MASUK" as const,
       stapelId,
+      gudang: stapels.find((s) => s.id === stapelId)?.gudang || "Gudang 1",
       commodityName: commodity.name,
       brand: newBatch.brand,
       koli: koliNum,
@@ -910,7 +913,7 @@ export const WarehouseProvider = ({ children }) => {
     suratJalan = "",
     operator = "Budi Santoso",
     notes = "",
-  }) => {
+  }: any) => {
     const koliNum = parseInt(koliToRelease, 10);
     let releasedCommodity = "";
     let releasedBrand = "";
@@ -925,7 +928,7 @@ export const WarehouseProvider = ({ children }) => {
         const updatedBatches = stapel.batches
           .map((batch) => {
             if (batch.id === batchId) {
-              releasedCommodity = batch.commodityName;
+              releasedCommodity = batch.commodityName || batch.brand;
               releasedBrand = batch.brand;
               weightPerUnit = batch.weightPerUnitKg;
               releasedUnit = batch.unit;
@@ -947,10 +950,11 @@ export const WarehouseProvider = ({ children }) => {
       })
     );
 
-    const newTransaction = {
+    const newTransaction: Transaction = {
       id: `TRX-${Date.now().toString().slice(-8)}`,
-      type: "KELUAR",
+      type: "KELUAR" as const,
       stapelId,
+      gudang: stapels.find((s) => s.id === stapelId)?.gudang || "Gudang 1",
       commodityName: releasedCommodity || "Komoditas Bulog",
       brand: releasedBrand,
       koli: koliNum,
@@ -1022,7 +1026,7 @@ export const WarehouseProvider = ({ children }) => {
   };
 
   // 3. CRUD MASTER KOMODITAS (Bisa dipanggil dari UI)
-  const addCommodity = async (commodityData) => {
+  const addCommodity = async (commodityData: any) => {
     try {
       const res = await fetch("/api/commodities", {
         method: "POST",
@@ -1048,7 +1052,7 @@ export const WarehouseProvider = ({ children }) => {
     }
   };
 
-  const updateCommodity = async (id, updates) => {
+  const updateCommodity = async (id: string, updates: any) => {
     try {
       const res = await fetch(`/api/commodities/${id}`, {
         method: "PUT",
@@ -1070,7 +1074,7 @@ export const WarehouseProvider = ({ children }) => {
     }
   };
 
-  const deleteCommodity = async (id) => {
+  const deleteCommodity = async (id: string) => {
     try {
       const res = await fetch(`/api/commodities/${id}`, { method: "DELETE" });
       const data = await res.json();
@@ -1086,7 +1090,7 @@ export const WarehouseProvider = ({ children }) => {
   };
 
   // 4. CRUD BATCH GUDANG (Penyesuaian Fisik / Relokasi)
-  const updateBatch = async (batchId, batchUpdates) => {
+  const updateBatch = async (batchId: string, batchUpdates: any) => {
     try {
       const res = await fetch(`/api/inventory/batches/${batchId}`, {
         method: "PUT",
@@ -1108,7 +1112,7 @@ export const WarehouseProvider = ({ children }) => {
     }
   };
 
-  const deleteBatch = async (batchId, reason = "Koreksi fisik") => {
+  const deleteBatch = async (batchId: string, reason = "Koreksi fisik") => {
     try {
       const res = await fetch(
         `/api/inventory/batches/${batchId}?reason=${encodeURIComponent(reason)}&operatorName=${encodeURIComponent(
@@ -1127,7 +1131,7 @@ export const WarehouseProvider = ({ children }) => {
   };
 
   // 5. PENERBITAN BERITA ACARA STOCK OPNAME (BASO)
-  const saveBasoReport = async (basoData) => {
+  const saveBasoReport = async (basoData: any) => {
     try {
       const res = await fetch("/api/baso", {
         method: "POST",
@@ -1175,7 +1179,7 @@ export const WarehouseProvider = ({ children }) => {
     let fifoWarnings = 0;
     let criticalItems = 0;
 
-    const commoditySummary = {};
+    const commoditySummary: Record<string, any> = {};
 
     stapels.forEach((stapel) => {
       const batches = Array.isArray(stapel.batches) ? stapel.batches : [];
@@ -1204,9 +1208,12 @@ export const WarehouseProvider = ({ children }) => {
         const commName = b.commodityName || b.commodity?.name || b.brand || "Beras";
         if (!commoditySummary[commName]) {
           commoditySummary[commName] = {
+            id: commName.toLowerCase().replace(/\s+/g, "-"),
             name: commName,
+            category: "Beras",
             koli: 0,
             tonase: 0,
+            color: "#D97706",
             unit: b.unit || "Karung",
           };
         }
@@ -1216,6 +1223,9 @@ export const WarehouseProvider = ({ children }) => {
     });
 
     return {
+      totalCapacityTonase: 3000,
+      totalOccupiedTonase: parseFloat(totalTonase.toFixed(1)),
+      totalOccupiedKoli: totalKoli,
       totalKoli,
       totalTonase: parseFloat(totalTonase.toFixed(1)),
       stapelOccupied,
@@ -1223,7 +1233,7 @@ export const WarehouseProvider = ({ children }) => {
       occupancyPercentage: stapels.length > 0 ? Math.round((stapelOccupied / stapels.length) * 100) : 0,
       fifoWarnings,
       criticalItems,
-      commoditySummary: Object.values(commoditySummary),
+      commoditySummary: Object.values(commoditySummary) as any[],
     };
   }, [stapels]);
 

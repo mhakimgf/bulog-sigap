@@ -4,16 +4,19 @@ import { User } from "./auth";
 import { AuditLog } from "./audit";
 
 export interface ToastMessageData {
+  id?: string;
   type: "success" | "warning" | "info" | "error" | string;
   message: string;
 }
 
 export interface WarehouseStats {
-  totalCapacityTonase: number;
-  totalOccupiedTonase: number;
-  totalOccupiedKoli: number;
+  totalCapacityTonase?: number;
+  totalOccupiedTonase?: number;
+  totalOccupiedKoli?: number;
   totalTonase?: number;
   totalKoli?: number;
+  stapelOccupied?: number;
+  totalStapels?: number;
   occupancyPercentage: number;
   fifoWarnings: number;
   criticalItems: number;
@@ -64,7 +67,7 @@ export interface WarehouseContextType {
   updateBatch: (id: string, data: any) => Promise<any>;
   deleteBatch: (id: string, reason?: string) => Promise<any>;
   saveBasoReport: (data: any) => Promise<any>;
-  resetToFactoryData: () => Promise<void>;
+  resetToFactoryData: () => Promise<void> | void;
   showToast: (message: string, type?: string) => void;
   auditLogs: AuditLog[];
   logAuditEvent: (data: any) => Promise<any>;

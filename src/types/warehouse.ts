@@ -102,7 +102,7 @@ export interface Transaction {
   id: string;
   type: TransactionType;
   stapelId: string;
-  gudang: string;
+  gudang?: string;
   commodityName: string;
   brand: string;
   koli: number;
