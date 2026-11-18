@@ -3,28 +3,39 @@
 import React, { useState } from "react";
 import { useWarehouse } from "../../context/WarehouseContext";
 import { CustomSelect } from "../common/CustomSelect";
+import { AuditLog } from "@/types/audit";
 
-export const AuditTrailView = () => {
-  const { auditLogs, currentUser } = useWarehouse();
-  const [searchTerm, setSearchTerm] = useState("");
-  const [actionFilter, setActionFilter] = useState("ALL");
+export const AuditTrailView: React.FC = () => {
+  const { auditLogs } = useWarehouse();
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [actionFilter, setActionFilter] = useState<string>("ALL");
 
   // Filtering audit entries
-  const filteredLogs = auditLogs.filter((log) => {
+  const filteredLogs = auditLogs.filter((log: AuditLog) => {
     const matchesSearch =
-      log.user?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.target?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.details?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.nip?.toLowerCase().includes(searchTerm.toLowerCase());
+      (log.user || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (log.target || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (log.details || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (log.nip || "").toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesAction =
-      actionFilter === "ALL" || log.action?.includes(actionFilter);
+      actionFilter === "ALL" || (log.action || "").includes(actionFilter);
 
     return matchesSearch && matchesAction;
   });
 
   const handleExportCsv = () => {
-    const headers = ["ID Log", "Waktu", "Petugas", "NIP", "Peran", "Tipe Aksi", "Target", "Rincian Kejadian", "Alamat IP"];
+    const headers = [
+      "ID Log",
+      "Waktu",
+      "Petugas",
+      "NIP",
+      "Peran",
+      "Tipe Aksi",
+      "Target",
+      "Rincian Kejadian",
+      "Alamat IP",
+    ];
     const rows = filteredLogs.map((l) => [
       `"${l.id}"`,
       `"${l.timestamp}"`,
@@ -37,12 +48,16 @@ export const AuditTrailView = () => {
       `"${l.ipAddress || "-"}"`,
     ]);
 
-    const csvContent = "\uFEFF" + [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const csvContent =
+      "\uFEFF" + [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.setAttribute("download", `AUDIT-TRAIL-SIGAP-BULOG-${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute(
+      "download",
+      `AUDIT-TRAIL-SIGAP-BULOG-${new Date().toISOString().slice(0, 10)}.csv`
+    );
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -145,7 +160,7 @@ export const AuditTrailView = () => {
             Mutasi Barang Masuk/Keluar
           </span>
           <p className="text-lg sm:text-2xl font-bold font-mono text-emerald-700">
-            {auditLogs.filter((l) => l.action.includes("INBOUND") || l.action.includes("OUTBOUND")).length}
+            {auditLogs.filter((l) => (l.action as string).includes("INBOUND") || (l.action as string).includes("OUTBOUND")).length}
           </p>
           <p className="text-[10px] sm:text-xs text-emerald-600 mt-0.5 truncate">Terdokumentasi Surat Jalan</p>
         </div>
@@ -155,7 +170,7 @@ export const AuditTrailView = () => {
             Verifikasi Stock Opname
           </span>
           <p className="text-lg sm:text-2xl font-bold font-mono text-amber-700">
-            {auditLogs.filter((l) => l.action.includes("OPNAME") || l.action.includes("FREEZE")).length}
+            {auditLogs.filter((l) => (l.action as string).includes("OPNAME") || (l.action as string).includes("FREEZE")).length}
           </p>
           <p className="text-[10px] sm:text-xs text-amber-600 mt-0.5 truncate">Hasil Hitung Fisik Lapangan</p>
         </div>
@@ -165,7 +180,7 @@ export const AuditTrailView = () => {
             Aksi Otentikasi & Akun
           </span>
           <p className="text-lg sm:text-2xl font-bold font-mono text-purple-700">
-            {auditLogs.filter((l) => l.action.includes("USER")).length}
+            {auditLogs.filter((l) => (l.action as string).includes("USER")).length}
           </p>
           <p className="text-[10px] sm:text-xs text-purple-600 mt-0.5 truncate">Pengawasan Hak Akses</p>
         </div>
@@ -225,13 +240,13 @@ export const AuditTrailView = () => {
             <tbody className="divide-y divide-slate-100">
               {filteredLogs.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="p-8 text-center text-slate-400">
+                  <td colSpan={6} className="p-8 text-center text-slate-400">
                     Tidak ada catatan log audit yang sesuai kriteria pencarian.
                   </td>
                 </tr>
               ) : (
                 filteredLogs.map((log) => {
-                  const badge = getActionBadge(log.action);
+                  const badge = getActionBadge(log.action as string);
                   const timeFormatted = log.timestamp
                     ? new Date(log.timestamp).toLocaleString("id-ID", {
                         day: "2-digit",
