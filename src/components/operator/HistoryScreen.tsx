@@ -4,22 +4,23 @@ import React, { useState } from "react";
 import { useWarehouse } from "../../context/WarehouseContext";
 import { OperatorHeader } from "./OperatorHeader";
 import { OperatorBottomNav } from "./OperatorBottomNav";
+import { Transaction } from "@/types/warehouse";
 
-export const HistoryScreen = () => {
+export const HistoryScreen: React.FC = () => {
   const { transactions, setOperatorScreen, setSelectedStapelId } = useWarehouse();
-  const [filterType, setFilterType] = useState("ALL"); // 'ALL' | 'MASUK' | 'KELUAR'
+  const [filterType, setFilterType] = useState<string>("ALL"); // 'ALL' | 'MASUK' | 'KELUAR'
 
-  const filteredTransactions = transactions.filter((t) => {
+  const filteredTransactions = transactions.filter((t: Transaction) => {
     if (filterType === "ALL") return true;
     return t.type === filterType;
   });
 
   const totalMasuk = transactions
-    .filter((t) => t.type === "MASUK")
+    .filter((t: Transaction) => t.type === "MASUK")
     .reduce((sum, t) => sum + (t.koli || 0), 0);
 
   const totalKeluar = transactions
-    .filter((t) => t.type === "KELUAR")
+    .filter((t: Transaction) => t.type === "KELUAR")
     .reduce((sum, t) => sum + (t.koli || 0), 0);
 
   return (
@@ -67,7 +68,7 @@ export const HistoryScreen = () => {
             <button
               key={type}
               onClick={() => setFilterType(type)}
-              className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${
+              className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 filterType === type
                   ? "bg-[#1E3D73] text-white shadow-sm"
                   : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
@@ -85,7 +86,7 @@ export const HistoryScreen = () => {
               Tidak ada catatan transaksi dengan filter ini.
             </div>
           ) : (
-            filteredTransactions.map((trx) => (
+            filteredTransactions.map((trx: Transaction) => (
               <div
                 key={trx.id}
                 onClick={() => {
