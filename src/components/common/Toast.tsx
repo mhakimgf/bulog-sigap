@@ -3,8 +3,14 @@
 import React from "react";
 import { useWarehouse } from "../../context/WarehouseContext";
 
-export const Toast = () => {
-  const { toastMessage } = useWarehouse();
+export interface ToastMessageData {
+  type?: "success" | "warning" | "info" | "error" | string;
+  message?: string;
+}
+
+export const Toast: React.FC = () => {
+  const { toastMessage: rawToast } = useWarehouse();
+  const toastMessage = rawToast as ToastMessageData | null;
 
   if (!toastMessage) return null;
 

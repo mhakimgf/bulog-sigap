@@ -3,19 +3,28 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Html5Qrcode } from "html5-qrcode";
 
-export const QrCameraScanner = ({ onScanSuccess, onClose, activeStapelId = "G1-A2" }) => {
-  const [cameraState, setCameraState] = useState("initializing"); // 'initializing' | 'scanning' | 'error' | 'stopped'
-  const [errorMessage, setErrorMessage] = useState("");
-  const [cameras, setCameras] = useState([]);
-  const [selectedCameraId, setSelectedCameraId] = useState(null);
-  const [isFlashOn, setIsFlashOn] = useState(false);
-  const [manualInput, setManualInput] = useState("");
-  const scannerRef = useRef(null);
+export interface QrCameraScannerProps {
+  onScanSuccess?: (decodedText: string) => void;
+  onClose?: () => void;
+  activeStapelId?: string;
+}
+
+export const QrCameraScanner: React.FC<QrCameraScannerProps> = ({
+  onScanSuccess,
+  onClose,
+  activeStapelId = "G1-A2",
+}) => {
+  const [cameraState, setCameraState] = useState<"initializing" | "scanning" | "error" | "stopped">("initializing");
+  const [errorMessage, setErrorMessage] = useState<string>("");
+  const [cameras, setCameras] = useState<any[]>([]);
+  const [selectedCameraId, setSelectedCameraId] = useState<string | null>(null);
+  const [manualInput, setManualInput] = useState<string>("");
+  const scannerRef = useRef<Html5Qrcode | null>(null);
   const scannerContainerId = "bulog-html5-qr-reader";
 
   // Initializing Camera Scanner
   useEffect(() => {
-    let html5QrCode = null;
+    let html5QrCode: Html5Qrcode | null = null;
     let isMounted = true;
 
     const startScanner = async () => {
@@ -24,9 +33,16 @@ export const QrCameraScanner = ({ onScanSuccess, onClose, activeStapelId = "G1-A
         setErrorMessage("");
 
         // Check if running on mobile over insecure HTTP (browsers block camera on insecure origins)
-        if (typeof window !== "undefined" && window.isSecureContext === false && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
+        if (
+          typeof window !== "undefined" &&
+          window.isSecureContext === false &&
+          window.location.hostname !== "localhost" &&
+          window.location.hostname !== "127.0.0.1"
+        ) {
           setCameraState("error");
-          setErrorMessage("Browser membatasi akses kamera di jaringan HTTP lokal tanpa HTTPS. Jalankan 'npm run dev:https' untuk mengaktifkan HTTPS, atau gunakan tombol simulasi / input manual di bawah.");
+          setErrorMessage(
+            "Browser membatasi akses kamera di jaringan HTTP lokal tanpa HTTPS. Jalankan 'npm run dev:https' untuk mengaktifkan HTTPS, atau gunakan tombol simulasi / input manual di bawah."
+          );
           return;
         }
 
@@ -42,10 +58,11 @@ export const QrCameraScanner = ({ onScanSuccess, onClose, activeStapelId = "G1-A
 
         setCameras(devices);
         // Prefer back / environment camera on mobile phones
-        const backCamera = devices.find((d) =>
-          d.label.toLowerCase().includes("back") ||
-          d.label.toLowerCase().includes("rear") ||
-          d.label.toLowerCase().includes("environment")
+        const backCamera = devices.find(
+          (d) =>
+            d.label.toLowerCase().includes("back") ||
+            d.label.toLowerCase().includes("rear") ||
+            d.label.toLowerCase().includes("environment")
         );
         const chosenCameraId = backCamera ? backCamera.id : devices[0].id;
         setSelectedCameraId(chosenCameraId);
@@ -55,7 +72,7 @@ export const QrCameraScanner = ({ onScanSuccess, onClose, activeStapelId = "G1-A
 
         const config = {
           fps: 12,
-          qrbox: (viewfinderWidth, viewfinderHeight) => {
+          qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
             const minDim = Math.min(viewfinderWidth, viewfinderHeight);
             return {
               width: Math.floor(minDim * 0.72),
@@ -68,7 +85,7 @@ export const QrCameraScanner = ({ onScanSuccess, onClose, activeStapelId = "G1-A
         await html5QrCode.start(
           chosenCameraId,
           config,
-          (decodedText) => {
+          (decodedText: string) => {
             handleCodeScanned(decodedText);
           },
           () => {
@@ -79,7 +96,7 @@ export const QrCameraScanner = ({ onScanSuccess, onClose, activeStapelId = "G1-A
         if (isMounted) {
           setCameraState("scanning");
         }
-      } catch (err) {
+      } catch (err: any) {
         console.warn("Camera start failed, falling back to manual/simulation:", err);
         if (isMounted) {
           setCameraState("error");
@@ -102,9 +119,12 @@ export const QrCameraScanner = ({ onScanSuccess, onClose, activeStapelId = "G1-A
       if (scannerRef.current) {
         try {
           if (scannerRef.current.isScanning) {
-            scannerRef.current.stop().then(() => {
-              scannerRef.current.clear();
-            }).catch(() => {});
+            scannerRef.current
+              .stop()
+              .then(() => {
+                scannerRef.current?.clear();
+              })
+              .catch(() => {});
           }
         } catch (e) {
           console.warn("Error stopping scanner:", e);
@@ -113,7 +133,7 @@ export const QrCameraScanner = ({ onScanSuccess, onClose, activeStapelId = "G1-A
     };
   }, []);
 
-  const handleCodeScanned = (rawCode) => {
+  const handleCodeScanned = (rawCode: string) => {
     let cleanCode = (rawCode || "").trim().toUpperCase();
 
     // Normalisasi jika input berupa format URL atau JSON
@@ -134,17 +154,20 @@ export const QrCameraScanner = ({ onScanSuccess, onClose, activeStapelId = "G1-A
 
     // Audio click feedback
     try {
-      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(880, audioCtx.currentTime); // 880Hz (A5)
-      gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      osc.start();
-      osc.stop(audioCtx.currentTime + 0.15);
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (AudioCtx) {
+        const audioCtx = new AudioCtx();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(880, audioCtx.currentTime); // 880Hz (A5)
+        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.15);
+      }
     } catch {}
 
     if (onScanSuccess) {
@@ -152,7 +175,7 @@ export const QrCameraScanner = ({ onScanSuccess, onClose, activeStapelId = "G1-A
     }
   };
 
-  const handleManualSubmit = (e) => {
+  const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (manualInput.trim()) {
       handleCodeScanned(manualInput);

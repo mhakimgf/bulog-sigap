@@ -2,17 +2,47 @@
 
 import React, { useState, useRef, useEffect } from "react";
 
+export interface CustomSelectOption {
+  value: string | number;
+  label?: string;
+  sublabel?: string | null;
+  badge?: string | null;
+  icon?: string | null;
+  fontMono?: boolean;
+}
+
+export interface CustomSelectProps {
+  value?: string | number | null;
+  onChange?: (e: {
+    target: { value: any; name: string };
+    currentTarget: { value: any };
+    value: any;
+    toString: () => string;
+    valueOf: () => any;
+  }) => void;
+  options?: (string | number | CustomSelectOption)[];
+  placeholder?: string;
+  icon?: string | null;
+  size?: "sm" | "md" | "lg";
+  disabled?: boolean;
+  className?: string;
+  searchable?: boolean;
+  name?: string;
+  id?: string;
+  fontMono?: boolean;
+}
+
 /**
  * CustomSelect - Reusable Custom Styled Dropdown for SIGAP Bulog
  * Eliminates ugly browser-native <select> and provides a sleek, touch-friendly UI.
  */
-export const CustomSelect = ({
+export const CustomSelect: React.FC<CustomSelectProps> = ({
   value,
   onChange,
   options = [],
   placeholder = "Pilih opsi...",
   icon = null,
-  size = "md", // 'sm' | 'md' | 'lg'
+  size = "md",
   disabled = false,
   className = "",
   searchable = false,
@@ -22,14 +52,14 @@ export const CustomSelect = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const dropdownRef = useRef(null);
-  const searchInputRef = useRef(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Normalize options array: string[] or object[]
   const normalizedOptions = React.useMemo(() => {
     return options.map((opt) => {
       if (typeof opt === "string" || typeof opt === "number") {
-        return { value: opt, label: String(opt) };
+        return { value: opt, label: String(opt), sublabel: null, badge: null, icon: null, fontMono: false };
       }
       return {
         value: opt.value,
@@ -62,8 +92,8 @@ export const CustomSelect = ({
 
   // Close dropdown on click outside
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsOpen(false);
         setSearchQuery("");
       }
@@ -86,7 +116,7 @@ export const CustomSelect = ({
   }, [isOpen, isSearchActive]);
 
   // Handle option selection
-  const handleSelect = (val) => {
+  const handleSelect = (val: string | number) => {
     setIsOpen(false);
     setSearchQuery("");
     if (typeof onChange === "function") {
@@ -102,7 +132,7 @@ export const CustomSelect = ({
   };
 
   // Keyboard accessibility
-  const handleKeyDown = (e) => {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
     if (disabled) return;
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
