@@ -3,15 +3,15 @@
 import React, { useState } from "react";
 import { useWarehouse } from "../../context/WarehouseContext";
 
-export const LoginPage = () => {
-  const { login, users } = useWarehouse();
-  const [identifier, setIdentifier] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+export const LoginPage: React.FC = () => {
+  const { login } = useWarehouse();
+  const [identifier, setIdentifier] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string>("");
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e?: React.FormEvent) => {
     if (e && e.preventDefault) e.preventDefault();
     setErrorMessage("");
 
@@ -24,8 +24,8 @@ export const LoginPage = () => {
     }
 
     setIsLoading(true);
-    setTimeout(() => {
-      const res = login(cleanId, cleanPass);
+    setTimeout(async () => {
+      const res = await login(cleanId, cleanPass);
       setIsLoading(false);
       if (!res || !res.success) {
         setErrorMessage(res?.message || "Gagal masuk. Periksa kembali akun Anda.");
@@ -38,13 +38,13 @@ export const LoginPage = () => {
     }, 150);
   };
 
-  const handleQuickLogin = (email, pass) => {
+  const handleQuickLogin = (email: string, pass: string) => {
     setIdentifier(email);
     setPassword(pass);
     setErrorMessage("");
     setIsLoading(true);
-    setTimeout(() => {
-      const res = login(email, pass);
+    setTimeout(async () => {
+      const res = await login(email, pass);
       setIsLoading(false);
       if (res && res.success) {
         const dest = res.user?.role === "operator" ? "/operator" : "/dashboard";
@@ -155,7 +155,7 @@ export const LoginPage = () => {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-[18px]">
                     {showPassword ? "visibility_off" : "visibility"}
@@ -193,7 +193,7 @@ export const LoginPage = () => {
               <button
                 type="button"
                 onClick={() => handleQuickLogin("admin@bulog.co.id", "admin123")}
-                className="w-full p-2.5 rounded-xl border border-purple-200 bg-purple-50/70 hover:bg-purple-100/80 text-left transition-all flex items-center justify-between group"
+                className="w-full p-2.5 rounded-xl border border-purple-200 bg-purple-50/70 hover:bg-purple-100/80 text-left transition-all flex items-center justify-between group cursor-pointer"
               >
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-lg bg-purple-600 text-white flex items-center justify-center font-bold text-xs shadow-xs">
@@ -218,7 +218,7 @@ export const LoginPage = () => {
               <button
                 type="button"
                 onClick={() => handleQuickLogin("hendra@bulog.co.id", "bulog123")}
-                className="w-full p-2.5 rounded-xl border border-blue-200 bg-blue-50/70 hover:bg-blue-100/80 text-left transition-all flex items-center justify-between group"
+                className="w-full p-2.5 rounded-xl border border-blue-200 bg-blue-50/70 hover:bg-blue-100/80 text-left transition-all flex items-center justify-between group cursor-pointer"
               >
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-lg bg-[#1E3D73] text-white flex items-center justify-center font-bold text-xs shadow-xs">
@@ -243,7 +243,7 @@ export const LoginPage = () => {
               <button
                 type="button"
                 onClick={() => handleQuickLogin("budi@bulog.co.id", "operator123")}
-                className="w-full p-2.5 rounded-xl border border-amber-200 bg-amber-50/70 hover:bg-amber-100/80 text-left transition-all flex items-center justify-between group"
+                className="w-full p-2.5 rounded-xl border border-amber-200 bg-amber-50/70 hover:bg-amber-100/80 text-left transition-all flex items-center justify-between group cursor-pointer"
               >
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-lg bg-[#F0A516] text-[#0F2040] flex items-center justify-center font-bold text-xs shadow-xs">
