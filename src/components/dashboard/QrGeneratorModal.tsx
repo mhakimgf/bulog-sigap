@@ -4,14 +4,25 @@ import React, { useState, useEffect } from "react";
 import QRCode from "qrcode";
 import { useWarehouse } from "../../context/WarehouseContext";
 import { CustomSelect } from "../common/CustomSelect";
+import { Stapel } from "@/types/warehouse";
 
-export const QrGeneratorModal = ({ isOpen, onClose, defaultStapelId = "G1-A2" }) => {
-  const { warehouse, stapels, logAuditEvent } = useWarehouse();
-  const [selectedStapelId, setSelectedStapelId] = useState(defaultStapelId);
-  const [qrMode, setQrMode] = useState("single"); // 'single' | 'gudang' | 'all'
-  const [selectedGudangFilter, setSelectedGudangFilter] = useState("Gudang 1");
-  const [qrCodeDataUrls, setQrCodeDataUrls] = useState({});
-  const [isLoadingQr, setIsLoadingQr] = useState(true);
+export interface QrGeneratorModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  defaultStapelId?: string;
+}
+
+export const QrGeneratorModal: React.FC<QrGeneratorModalProps> = ({
+  isOpen,
+  onClose,
+  defaultStapelId = "G1-A2",
+}) => {
+  const { stapels, logAuditEvent } = useWarehouse();
+  const [selectedStapelId, setSelectedStapelId] = useState<string>(defaultStapelId);
+  const [qrMode, setQrMode] = useState<"single" | "gudang" | "all">("single");
+  const [selectedGudangFilter, setSelectedGudangFilter] = useState<string>("Gudang 1");
+  const [qrCodeDataUrls, setQrCodeDataUrls] = useState<Record<string, string>>({});
+  const [isLoadingQr, setIsLoadingQr] = useState<boolean>(true);
 
   // Sync defaultStapelId when prop changes
   useEffect(() => {
@@ -26,20 +37,22 @@ export const QrGeneratorModal = ({ isOpen, onClose, defaultStapelId = "G1-A2" })
     setIsLoadingQr(true);
 
     const generateQrs = async () => {
-      const urls = {};
+      const urls: Record<string, string> = {};
       try {
         if (qrMode === "single") {
           const target = stapels.find((s) => s.id === selectedStapelId) || stapels[0];
-          const payload = target.id;
-          const url = await QRCode.toDataURL(payload, {
-            width: 320,
-            margin: 2,
-            color: {
-              dark: "#0A1630",
-              light: "#FFFFFF",
-            },
-          });
-          urls[target.id] = url;
+          if (target) {
+            const payload = target.id;
+            const url = await QRCode.toDataURL(payload, {
+              width: 320,
+              margin: 2,
+              color: {
+                dark: "#0A1630",
+                light: "#FFFFFF",
+              },
+            });
+            urls[target.id] = url;
+          }
         } else if (qrMode === "gudang") {
           const targetStapels = stapels.filter((s) => s.gudang === selectedGudangFilter);
           for (const s of targetStapels) {
@@ -93,14 +106,14 @@ export const QrGeneratorModal = ({ isOpen, onClose, defaultStapelId = "G1-A2" })
     window.print();
   };
 
-  const handleDownloadPng = (stapelId, dataUrl) => {
+  const handleDownloadPng = (stapelId: string, dataUrl: string) => {
     const link = document.createElement("a");
     link.download = `LABEL-QR-STAPEL-${stapelId}.png`;
     link.href = dataUrl;
     link.click();
   };
 
-  const getBlockTheme = (block) => {
+  const getBlockTheme = (block: string) => {
     if (block === "A") {
       return {
         bg: "bg-[#FFE4E6]",
@@ -129,7 +142,7 @@ export const QrGeneratorModal = ({ isOpen, onClose, defaultStapelId = "G1-A2" })
   };
 
   // Render a Single Printable Bulog Label Card
-  const renderLabelCard = (stapel) => {
+  const renderLabelCard = (stapel: Stapel) => {
     const theme = getBlockTheme(stapel.block);
     const qrUrl = qrCodeDataUrls[stapel.id];
 
@@ -221,7 +234,7 @@ export const QrGeneratorModal = ({ isOpen, onClose, defaultStapelId = "G1-A2" })
 
   const labelsToRender =
     qrMode === "single"
-      ? [currentStapel]
+      ? currentStapel ? [currentStapel] : []
       : qrMode === "gudang"
       ? stapels.filter((s) => s.gudang === selectedGudangFilter)
       : stapels;
@@ -268,7 +281,7 @@ export const QrGeneratorModal = ({ isOpen, onClose, defaultStapelId = "G1-A2" })
           <div className="flex items-center gap-1.5 bg-white p-1 rounded-xl border border-slate-200 shadow-xs">
             <button
               onClick={() => setQrMode("single")}
-              className={`px-3 py-1.5 rounded-lg font-bold transition-all ${
+              className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
                 qrMode === "single"
                   ? "bg-[#1E3D73] text-white shadow-xs"
                   : "text-slate-600 hover:text-slate-900"
@@ -278,7 +291,7 @@ export const QrGeneratorModal = ({ isOpen, onClose, defaultStapelId = "G1-A2" })
             </button>
             <button
               onClick={() => setQrMode("gudang")}
-              className={`px-3 py-1.5 rounded-lg font-bold transition-all ${
+              className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
                 qrMode === "gudang"
                   ? "bg-[#1E3D73] text-white shadow-xs"
                   : "text-slate-600 hover:text-slate-900"
@@ -288,7 +301,7 @@ export const QrGeneratorModal = ({ isOpen, onClose, defaultStapelId = "G1-A2" })
             </button>
             <button
               onClick={() => setQrMode("all")}
-              className={`px-3 py-1.5 rounded-lg font-bold transition-all ${
+              className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
                 qrMode === "all"
                   ? "bg-[#1E3D73] text-white shadow-xs"
                   : "text-slate-600 hover:text-slate-900"
@@ -342,7 +355,7 @@ export const QrGeneratorModal = ({ isOpen, onClose, defaultStapelId = "G1-A2" })
                 onClick={() =>
                   handleDownloadPng(selectedStapelId, qrCodeDataUrls[selectedStapelId])
                 }
-                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1 transition-colors"
+                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer"
                 title="Download Gambar QR PNG"
               >
                 <span className="material-symbols-outlined text-[16px]">download</span>

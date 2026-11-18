@@ -3,12 +3,17 @@
 import React, { useState } from "react";
 import { useWarehouse } from "../../context/WarehouseContext";
 
-export const BasoModal = ({ isOpen, onClose }) => {
+export interface BasoModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export const BasoModal: React.FC<BasoModalProps> = ({ isOpen, onClose }) => {
   const { warehouse, stapels, warehouseStats } = useWarehouse();
-  const [nomorBaso, setNomorBaso] = useState("BA-SO/04/CISKID-01/XI/2026");
-  const [tanggalOpname, setTanggalOpname] = useState("15 November 2026");
-  const [petugasOpname, setPetugasOpname] = useState("Budi Santoso");
-  const [catatanUmum, setCatatanUmum] = useState(
+  const [nomorBaso] = useState<string>("BA-SO/04/CISKID-01/XI/2026");
+  const [tanggalOpname] = useState<string>("15 November 2026");
+  const [petugasOpname] = useState<string>("Budi Santoso");
+  const [catatanUmum] = useState<string>(
     "Hasil penghitungan fisik tumpukan (stapel) menunjukkan kesesuaian fisik dengan kartu gudang dan mutasi digital SIGAP. Tidak ditemukan selisih rusak atau kehilangan."
   );
 
@@ -39,14 +44,14 @@ export const BasoModal = ({ isOpen, onClose }) => {
           <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
             <button
               onClick={handlePrint}
-              className="px-2.5 sm:px-3 py-1.5 bg-[#F0A516] hover:bg-[#D4900F] text-[#0F2040] rounded-lg text-xs font-bold flex items-center gap-1 sm:gap-1.5 transition-colors shadow-sm"
+              className="px-2.5 sm:px-3 py-1.5 bg-[#F0A516] hover:bg-[#D4900F] text-[#0F2040] rounded-lg text-xs font-bold flex items-center gap-1 sm:gap-1.5 transition-colors shadow-sm cursor-pointer"
             >
               <span className="material-symbols-outlined text-[16px]">print</span>
               <span className="hidden sm:inline">Cetak / Simpan</span> PDF
             </button>
             <button
               onClick={onClose}
-              className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors"
+              className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
             >
               <span className="material-symbols-outlined text-[20px]">close</span>
             </button>
@@ -66,10 +71,10 @@ export const BasoModal = ({ isOpen, onClose }) => {
               PERUSAHAAN UMUM (PERUM) BULOG
             </h2>
             <h3 className="text-xs font-semibold uppercase text-slate-700">
-              {warehouse.kanwil?.toUpperCase()} — {warehouse.kancab?.toUpperCase()}
+              {warehouse?.kanwil?.toUpperCase()} — {warehouse?.kancab?.toUpperCase()}
             </h3>
             <p className="text-[11px] text-slate-500 font-sans mt-0.5">
-              Unit Pergudangan: {warehouse.name} ({warehouse.code}) • {warehouse.address}
+              Unit Pergudangan: {warehouse?.name} ({warehouse?.code}) • {warehouse?.address}
             </p>
           </div>
 
@@ -85,7 +90,7 @@ export const BasoModal = ({ isOpen, onClose }) => {
 
           {/* Opening Paragraph */}
           <p className="text-xs leading-relaxed mb-4 text-justify font-sans">
-            Pada hari ini, <strong>Minggu</strong> tanggal <strong>{tanggalOpname}</strong>, telah dilakukan pemeriksaan dan perhitungan fisik (Stock Opname) persediaan komoditas pangan yang tersimpan di dalam <strong>{warehouse.name}</strong>, dengan rincian hasil pencatatan fisik dan rekonsiliasi pembukuan sistem digital SIGAP sebagai berikut:
+            Pada hari ini, <strong>Minggu</strong> tanggal <strong>{tanggalOpname}</strong>, telah dilakukan pemeriksaan dan perhitungan fisik (Stock Opname) persediaan komoditas pangan yang tersimpan di dalam <strong>{warehouse?.name}</strong>, dengan rincian hasil pencatatan fisik dan rekonsiliasi pembukuan sistem digital SIGAP sebagai berikut:
           </p>
 
           {/* Reconciliation Table */}
@@ -146,16 +151,16 @@ export const BasoModal = ({ isOpen, onClose }) => {
                     Total Fisik Gudang
                   </td>
                   <td className="border border-slate-300 p-2 text-right font-mono">
-                    {warehouseStats.totalKoli.toLocaleString("id-ID")}
+                    {(warehouseStats?.totalOccupiedKoli || 0).toLocaleString("id-ID")}
                   </td>
                   <td className="border border-slate-300 p-2 text-right font-mono text-[#1E3D73]">
-                    {warehouseStats.totalKoli.toLocaleString("id-ID")}
+                    {(warehouseStats?.totalOccupiedKoli || 0).toLocaleString("id-ID")}
                   </td>
                   <td className="border border-slate-300 p-2 text-right font-mono text-emerald-700">
                     NIHIL
                   </td>
                   <td className="border border-slate-300 p-2 text-center font-mono">
-                    {warehouseStats.totalTonase} Ton
+                    {warehouseStats?.totalOccupiedTonase || 0} Ton
                   </td>
                 </tr>
               </tfoot>
@@ -195,8 +200,8 @@ export const BasoModal = ({ isOpen, onClose }) => {
               <div className="h-16 flex items-center justify-center font-serif italic text-slate-400">
                 [Tertanda Digital]
               </div>
-              <p className="font-bold underline text-slate-900">{warehouse.kepalaGudang}</p>
-              <p className="text-[10px] text-slate-500 font-mono">NIP. {warehouse.nipKepalaGudang}</p>
+              <p className="font-bold underline text-slate-900">{warehouse?.kepalaGudang || "Hendra Wijaya"}</p>
+              <p className="text-[10px] text-slate-500 font-mono">NIP. {warehouse?.nipKepalaGudang || "-"}</p>
             </div>
           </div>
         </div>
