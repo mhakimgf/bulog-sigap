@@ -1,10 +1,10 @@
-// src/app/api/commodities/route.js
-import { NextResponse } from "next/server";
-import { prisma } from "../../../lib/prisma";
-import { createAuditLog } from "../../../lib/audit";
+// src/app/api/commodities/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { createAuditLog } from "@/lib/audit";
 
 // GET: Ambil seluruh master data komoditas pangan
-export async function GET() {
+export async function GET(): Promise<NextResponse> {
   try {
     const commodities = await prisma.commodity.findMany({
       include: {
@@ -19,7 +19,7 @@ export async function GET() {
       success: true,
       data: commodities,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("GET /api/commodities error:", error);
     return NextResponse.json(
       { success: false, message: "Gagal mengambil data komoditas", error: error.message },
@@ -29,7 +29,7 @@ export async function GET() {
 }
 
 // POST: Tambah komoditas baru & catat ke Audit Log
-export async function POST(request) {
+export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const body = await request.json();
     const {
@@ -88,7 +88,7 @@ export async function POST(request) {
       message: `Komoditas "${newCommodity.name}" berhasil ditambahkan`,
       data: newCommodity,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("POST /api/commodities error:", error);
     return NextResponse.json(
       { success: false, message: "Gagal menambahkan komoditas", error: error.message },
