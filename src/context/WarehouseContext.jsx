@@ -9,6 +9,14 @@ import {
   COMMODITIES,
   INITIAL_USERS,
 } from "../data/initialWarehouseData";
+import {
+  calculateAgingDays,
+  getShelfLifeStatus,
+  calculateOpnamePhysical,
+  calculateVariance,
+} from "../lib/calculations";
+
+export { calculateAgingDays, getShelfLifeStatus, calculateOpnamePhysical, calculateVariance };
 
 const WarehouseContext = createContext(null);
 
@@ -55,61 +63,6 @@ export const useWarehouse = () => {
     throw new Error("useWarehouse must be used within a WarehouseProvider");
   }
   return context;
-};
-
-// Helper untuk menghitung selisih hari dari tanggal sekarang
-export const calculateAgingDays = (dateString) => {
-  if (!dateString) return 0;
-  const inDate = new Date(dateString);
-  const now = new Date("2026-11-15T00:00:00");
-  const diffTime = Math.max(0, now - inDate);
-  return Math.floor(diffTime / (1000 * 60 * 60 * 24));
-};
-
-// Helper status masa simpan Bulog
-export const getShelfLifeStatus = (days, maxDays = 180) => {
-  if (days > maxDays) {
-    return {
-      status: "kritis",
-      label: "Melewati Batas Simpan",
-      badgeColor: "bg-red-100 text-red-700 border-red-200",
-      barColor: "bg-red-600",
-      textColor: "text-red-700",
-      icon: "error",
-      isFifoPriority: true,
-    };
-  }
-  if (days >= 150) {
-    return {
-      status: "prioritas",
-      label: "Prioritas Salur",
-      badgeColor: "bg-orange-100 text-orange-700 border-orange-200",
-      barColor: "bg-orange-500",
-      textColor: "text-orange-700",
-      icon: "warning",
-      isFifoPriority: true,
-    };
-  }
-  if (days >= 90) {
-    return {
-      status: "waspada",
-      label: "Perlu Monitoring",
-      badgeColor: "bg-amber-100 text-amber-700 border-amber-200",
-      barColor: "bg-amber-500",
-      textColor: "text-amber-700",
-      icon: "schedule",
-      isFifoPriority: false,
-    };
-  }
-  return {
-    status: "optimal",
-    label: "Optimal",
-    badgeColor: "bg-emerald-100 text-emerald-700 border-emerald-200",
-    barColor: "bg-emerald-500",
-    textColor: "text-emerald-700",
-    icon: "check_circle",
-    isFifoPriority: false,
-  };
 };
 
 export const WarehouseProvider = ({ children }) => {
