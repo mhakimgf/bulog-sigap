@@ -11,7 +11,7 @@ import { OperatorBottomNav } from "./OperatorBottomNav";
 import { Stapel, Batch, Transaction } from "@/types/warehouse";
 
 export interface StapelDetailViewProps {
-  stapelId?: string;
+  stapelId?: string | null;
 }
 
 export const StapelDetailView: React.FC<StapelDetailViewProps> = ({ stapelId: propStapelId }) => {
