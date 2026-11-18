@@ -57,6 +57,9 @@ const INITIAL_AUDIT_LOGS = [
   },
 ];
 
+/**
+ * @returns {import('../types/context').WarehouseContextType}
+ */
 export const useWarehouse = () => {
   const context = useContext(WarehouseContext);
   if (!context) {

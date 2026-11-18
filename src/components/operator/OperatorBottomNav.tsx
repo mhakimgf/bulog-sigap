@@ -4,7 +4,7 @@ import React from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useWarehouse } from "../../context/WarehouseContext";
 
-export const OperatorBottomNav = () => {
+export const OperatorBottomNav: React.FC = () => {
   const { operatorScreen, setOperatorScreen, selectedStapelId } = useWarehouse();
   const pathname = usePathname() || "";
   const router = useRouter();
@@ -15,7 +15,7 @@ export const OperatorBottomNav = () => {
   const isHistory = pathname === "/operator/history" || operatorScreen === "history";
   const isOutbound = pathname === "/operator/outbound" || operatorScreen === "outbound";
 
-  const handleNav = (screen, url) => {
+  const handleNav = (screen: string, url: string) => {
     setOperatorScreen(screen);
     try {
       router.push(url);
@@ -100,9 +100,9 @@ export const OperatorBottomNav = () => {
             className="material-symbols-outlined text-[24px]"
             style={{ fontVariationSettings: isOutbound ? "'FILL' 1" : "'FILL' 0" }}
           >
-            outbox
+            local_shipping
           </span>
-          <span className="text-[11px] tracking-tight">Keluar</span>
+          <span className="text-[11px] tracking-tight">Penyaluran</span>
         </button>
       </div>
     </nav>

@@ -3,11 +3,29 @@
 import React from "react";
 import { useRouter } from "next/navigation";
 import { useWarehouse } from "../../context/WarehouseContext";
+import { User } from "@/types/auth";
 
-export const OperatorHeader = ({ title = "SIGAP BULOG", showBack = false, onBack }) => {
+export interface OperatorHeaderProps {
+  title?: string;
+  showBack?: boolean;
+  onBack?: () => void;
+}
+
+export const OperatorHeader: React.FC<OperatorHeaderProps> = ({
+  title = "SIGAP BULOG",
+  showBack = false,
+  onBack,
+}) => {
   const router = useRouter();
-  const { warehouse, isOnline, toggleOnlineMode, notificationCount, currentUser, logout, setActiveView } =
-    useWarehouse();
+  const {
+    warehouse,
+    isOnline,
+    toggleOnlineMode,
+    currentUser: rawUser,
+    logout,
+    setActiveView,
+  } = useWarehouse();
+  const currentUser = rawUser as User | null;
 
   const handleBack = () => {
     if (onBack) {
@@ -71,7 +89,7 @@ export const OperatorHeader = ({ title = "SIGAP BULOG", showBack = false, onBack
                 warehouse
               </span>
               <span className="font-mono text-[11px] truncate text-slate-600">
-                {warehouse.name}
+                {warehouse?.name || "Gudang Bulog"}
               </span>
             </div>
           </div>
