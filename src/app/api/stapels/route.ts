@@ -1,15 +1,15 @@
-// src/app/api/stapels/route.js
-import { NextResponse } from "next/server";
-import { prisma } from "../../../lib/prisma";
+// src/app/api/stapels/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 
-export async function GET(request) {
+export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     const { searchParams } = new URL(request.url);
     const gudang = searchParams.get("gudang");
     const block = searchParams.get("block");
     const status = searchParams.get("status");
 
-    const where = {
+    const where: Record<string, any> = {
       ...(gudang && { gudang }),
       ...(block && { block }),
       ...(status && { status }),
@@ -32,7 +32,7 @@ export async function GET(request) {
       ],
     });
 
-    const blockStyles = {
+    const blockStyles: Record<string, { colorClass: string; baseColor: string }> = {
       A: { colorClass: "bg-[#FFD1D8] text-[#9F1239] border-[#FDA4AF]", baseColor: "pink" },
       B: { colorClass: "bg-[#FEF08A] text-[#854D0E] border-[#FDE047]", baseColor: "yellow" },
       C: { colorClass: "bg-[#BBF7D0] text-[#166534] border-[#86EFAC]", baseColor: "green" },
@@ -42,7 +42,7 @@ export async function GET(request) {
     const enriched = stapels.map((s) => {
       let totalKoli = 0;
       let totalKg = 0;
-      let oldestDateIn = null;
+      let oldestDateIn: Date | string | null = null;
 
       const enrichedBatches = s.batches.map((b) => {
         totalKoli += b.koli;
@@ -79,7 +79,7 @@ export async function GET(request) {
       success: true,
       data: enriched,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("GET /api/stapels error:", error);
     return NextResponse.json(
       { success: false, message: "Gagal mengambil data stapel", error: error.message },

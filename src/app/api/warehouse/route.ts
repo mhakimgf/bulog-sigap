@@ -1,9 +1,9 @@
-// src/app/api/warehouse/route.js
+// src/app/api/warehouse/route.ts
 import { NextResponse } from "next/server";
-import { prisma } from "../../../lib/prisma";
-import { INITIAL_WAREHOUSE, COMMODITIES } from "../../../data/initialWarehouseData";
+import { prisma } from "@/lib/prisma";
+import { INITIAL_WAREHOUSE, COMMODITIES } from "@/data/initialWarehouseData";
 
-export async function GET() {
+export async function GET(): Promise<NextResponse> {
   try {
     const [warehouse, commodities] = await Promise.all([
       prisma.warehouse.findFirst({
@@ -37,7 +37,7 @@ export async function GET() {
         commodities,
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     console.warn("[DB_FALLBACK] Menggunakan data awal Kompleks CISKID:", error.message);
     return NextResponse.json({
       success: true,
