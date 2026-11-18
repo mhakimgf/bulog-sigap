@@ -2,16 +2,18 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useWarehouse } from "../context/WarehouseContext";
-import { LoginPage } from "../components/auth/LoginPage";
-import { OperatorHome } from "../components/operator/OperatorHome";
-import { WarehouseDashboard } from "../components/dashboard/WarehouseDashboard";
-import { Toast } from "../components/common/Toast";
+import { useWarehouse } from "@/context/WarehouseContext";
+import { LoginPage } from "@/components/auth/LoginPage";
+import { OperatorHome } from "@/components/operator/OperatorHome";
+import { WarehouseDashboard } from "@/components/dashboard/WarehouseDashboard";
+import { Toast } from "@/components/common/Toast";
+import { User } from "@/types/auth";
 
 export default function HomePage() {
   const router = useRouter();
-  const { currentUser } = useWarehouse();
-  const [mounted, setMounted] = useState(false);
+  const { currentUser: rawUser } = useWarehouse();
+  const currentUser = rawUser as User | null;
+  const [, setMounted] = useState<boolean>(false);
 
   useEffect(() => {
     setMounted(true);

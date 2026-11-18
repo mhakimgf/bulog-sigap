@@ -1,7 +1,9 @@
 import "./globals.css";
-import { WarehouseProvider } from "../context/WarehouseContext";
+import React from "react";
+import { Metadata, Viewport } from "next";
+import { WarehouseProvider } from "@/context/WarehouseContext";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "SIGAP BULOG — Sistem Inventaris Gudang & Pelacakan",
   description: "Sistem Inventaris Pergudangan & Stock Opname Terpadu Perum Bulog",
   icons: {
@@ -9,7 +11,7 @@ export const metadata = {
   },
 };
 
-export const viewport = {
+export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1.0,
   maximumScale: 1.0,
@@ -17,7 +19,11 @@ export const viewport = {
   viewportFit: "cover",
 };
 
-export default function RootLayout({ children }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="id">
       <head>
