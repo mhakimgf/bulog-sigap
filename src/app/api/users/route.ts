@@ -1,10 +1,10 @@
-// src/app/api/users/route.js
-import { NextResponse } from "next/server";
-import { prisma } from "../../../lib/prisma";
-import { createAuditLog } from "../../../lib/audit";
+// src/app/api/users/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { createAuditLog } from "@/lib/audit";
 
 // GET: Ambil daftar seluruh pengguna (khusus Superadmin & Kepala Gudang)
-export async function GET() {
+export async function GET(): Promise<NextResponse> {
   try {
     const users = await prisma.user.findMany({
       select: {
@@ -25,7 +25,7 @@ export async function GET() {
       success: true,
       data: users,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("GET /api/users error:", error);
     return NextResponse.json(
       { success: false, message: "Gagal mengambil daftar pengguna", error: error.message },
@@ -35,7 +35,7 @@ export async function GET() {
 }
 
 // POST: Buat pengguna baru & catat ke Audit Trail
-export async function POST(request) {
+export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const body = await request.json();
     const {
@@ -112,7 +112,7 @@ export async function POST(request) {
       message: `Akun ${newUser.name} berhasil didaftarkan`,
       data: newUser,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("POST /api/users error:", error);
     return NextResponse.json(
       { success: false, message: "Gagal membuat pengguna", error: error.message },

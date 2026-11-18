@@ -1,10 +1,10 @@
-// src/app/api/audit-logs/route.js
-import { NextResponse } from "next/server";
-import { prisma } from "../../../lib/prisma";
-import { createAuditLog } from "../../../lib/audit";
+// src/app/api/audit-logs/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { createAuditLog } from "@/lib/audit";
 
 // GET: Ambil daftar seluruh catatan audit trail (GRC BUMN Bulog)
-export async function GET(request) {
+export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     const { searchParams } = new URL(request.url);
     const action = searchParams.get("action");
@@ -13,7 +13,7 @@ export async function GET(request) {
     const limit = parseInt(searchParams.get("limit") || "50", 10);
     const offset = parseInt(searchParams.get("offset") || "0", 10);
 
-    const where = {
+    const where: Record<string, any> = {
       ...(action && { action }),
       ...(role && { role }),
       ...(search && {
@@ -45,7 +45,7 @@ export async function GET(request) {
         offset,
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("GET /api/audit-logs error:", error);
     return NextResponse.json(
       { success: false, message: "Gagal mengambil data audit trail", error: error.message },
@@ -55,7 +55,7 @@ export async function GET(request) {
 }
 
 // POST: Tambahkan entri audit log kustom
-export async function POST(request) {
+export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const body = await request.json();
     const { action, target, details, user, role, nip, userId, ipAddress } = body;
@@ -83,7 +83,7 @@ export async function POST(request) {
       message: "Log audit berhasil dicatat",
       data: log,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("POST /api/audit-logs error:", error);
     return NextResponse.json(
       { success: false, message: "Gagal mencatat audit log", error: error.message },
