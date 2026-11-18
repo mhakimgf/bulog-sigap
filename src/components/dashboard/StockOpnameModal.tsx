@@ -3,11 +3,36 @@
 import React, { useState } from "react";
 import { useWarehouse } from "../../context/WarehouseContext";
 import { CustomSelect } from "../common/CustomSelect";
+import { Stapel } from "../../types/warehouse";
 
-export const StockOpnameModal = ({ isOpen, onClose, onOpenBaso }) => {
+export interface StockOpnameModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onOpenBaso?: () => void;
+}
+
+export interface OpnameRecordItem {
+  stapelId: string;
+  gudang?: string;
+  layerCount?: number;
+  perLayerKoli?: number;
+  peakKoli?: number;
+  damagedKoli?: number;
+  physicalKoli: number;
+  bookKoli: number;
+  variance: number;
+  note?: string;
+  recordedAt?: string;
+  operator?: string;
+}
+
+export const StockOpnameModal: React.FC<StockOpnameModalProps> = ({
+  isOpen,
+  onClose,
+  onOpenBaso,
+}) => {
   const {
     stapels,
-    warehouse,
     isFreezeMode,
     toggleFreezeMode,
     opnameRecords,
@@ -16,23 +41,32 @@ export const StockOpnameModal = ({ isOpen, onClose, onOpenBaso }) => {
     currentUser,
   } = useWarehouse();
 
-  const [selectedStapelId, setSelectedStapelId] = useState("G1-A2");
-  const [selectedGudangFilter, setSelectedGudangFilter] = useState("Gudang 1");
+  const [selectedStapelId, setSelectedStapelId] = useState<string>("G1-A2");
 
   // Calculator inputs
-  const [layerCount, setLayerCount] = useState("10");
-  const [perLayerKoli, setPerLayerKoli] = useState("100");
-  const [peakKoli, setPeakKoli] = useState("0");
-  const [damagedKoli, setDamagedKoli] = useState("0");
-  const [opnameNote, setOpnameNote] = useState("");
+  const [layerCount, setLayerCount] = useState<string>("10");
+  const [perLayerKoli, setPerLayerKoli] = useState<string>("100");
+  const [peakKoli, setPeakKoli] = useState<string>("0");
+  const [damagedKoli, setDamagedKoli] = useState<string>("0");
+  const [opnameNote, setOpnameNote] = useState<string>("");
 
   if (!isOpen) return null;
 
-  const currentStapel =
-    stapels.find((s) => s.id === selectedStapelId) || stapels[0];
+  const currentStapel: Stapel =
+    stapels.find((s) => s.id === selectedStapelId) ||
+    stapels[0] || {
+      id: selectedStapelId,
+      gudang: "Gudang 1",
+      block: "A",
+      number: 1,
+      name: `Stapel ${selectedStapelId}`,
+      capacityKoli: 1000,
+      status: "kosong",
+      batches: [],
+    };
 
   const bookKoli = currentStapel
-    ? currentStapel.batches.reduce((sum, b) => sum + (b.koli || 0), 0)
+    ? (currentStapel.batches || []).reduce((sum, b) => sum + (b.koli || 0), 0)
     : 0;
 
   // Live calculation
@@ -43,7 +77,7 @@ export const StockOpnameModal = ({ isOpen, onClose, onOpenBaso }) => {
   const calculatedPhysicalKoli = Math.max(0, layers * perLayer + peak - damaged);
   const calculatedVariance = calculatedPhysicalKoli - bookKoli;
 
-  const handleSaveOpnameRecord = (e) => {
+  const handleSaveOpnameRecord = (e: React.FormEvent) => {
     e.preventDefault();
     recordStapelOpname({
       stapelId: selectedStapelId,
@@ -56,9 +90,9 @@ export const StockOpnameModal = ({ isOpen, onClose, onOpenBaso }) => {
   };
 
   // Pre-fill calculation when selecting a stapel that already has records or batches
-  const handleSelectStapel = (sid) => {
+  const handleSelectStapel = (sid: string) => {
     setSelectedStapelId(sid);
-    const existing = opnameRecords[sid];
+    const existing = (opnameRecords || {})[sid];
     if (existing) {
       setLayerCount(existing.layerCount?.toString() || "10");
       setPerLayerKoli(existing.perLayerKoli?.toString() || "100");
@@ -67,7 +101,7 @@ export const StockOpnameModal = ({ isOpen, onClose, onOpenBaso }) => {
       setOpnameNote(existing.note || "");
     } else {
       const s = stapels.find((item) => item.id === sid);
-      const bKoli = s ? s.batches.reduce((sum, b) => sum + (b.koli || 0), 0) : 0;
+      const bKoli = s ? (s.batches || []).reduce((sum, b) => sum + (b.koli || 0), 0) : 0;
       if (bKoli >= 100) {
         setLayerCount("10");
         setPerLayerKoli((bKoli / 10).toString());
@@ -84,21 +118,12 @@ export const StockOpnameModal = ({ isOpen, onClose, onOpenBaso }) => {
   };
 
   // Summary Metrics of current opname session
-  const verifiedCount = Object.keys(opnameRecords).length;
+  const verifiedCount = Object.keys(opnameRecords || {}).length;
   const totalStapels = stapels.length;
-  const opnameList = Object.values(opnameRecords);
+  const opnameList = Object.values(opnameRecords || {}) as OpnameRecordItem[];
   const matchCount = opnameList.filter((r) => r.variance === 0).length;
   const shortageCount = opnameList.filter((r) => r.variance < 0).length;
   const surplusCount = opnameList.filter((r) => r.variance > 0).length;
-
-  const totalBookKoli = stapels.reduce(
-    (sum, s) => sum + s.batches.reduce((bSum, b) => bSum + (b.koli || 0), 0),
-    0
-  );
-  const totalPhysicalVerifiedKoli = opnameList.reduce(
-    (sum, r) => sum + (r.physicalKoli || 0),
-    0
-  );
 
   const accuracyRate =
     verifiedCount > 0
@@ -227,14 +252,14 @@ export const StockOpnameModal = ({ isOpen, onClose, onOpenBaso }) => {
               {onOpenBaso && (
                 <button
                   onClick={onOpenBaso}
-                  className="flex-1 py-1 px-2 bg-[#1E3D73] hover:bg-[#162D55] text-white rounded-lg text-[11px] font-bold transition-colors shadow-xs"
+                  className="flex-1 py-1 px-2 bg-[#1E3D73] hover:bg-[#162D55] text-white rounded-lg text-[11px] font-bold transition-colors shadow-xs cursor-pointer"
                 >
                   Ekspor BASO
                 </button>
               )}
               <button
                 onClick={resetOpnameSession}
-                className="py-1 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[11px] font-bold transition-colors"
+                className="py-1 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[11px] font-bold transition-colors cursor-pointer"
                 title="Reset Sesi Opname"
               >
                 Reset
@@ -268,7 +293,7 @@ export const StockOpnameModal = ({ isOpen, onClose, onOpenBaso }) => {
                   options={stapels.map((s) => ({
                     value: s.id,
                     label: `${s.id} — ${s.gudang}`,
-                    badge: opnameRecords[s.id] ? "✓ Terhitung" : "Belum",
+                    badge: (opnameRecords || {})[s.id] ? "✓ Terhitung" : "Belum",
                   }))}
                 />
               </div>
@@ -281,7 +306,7 @@ export const StockOpnameModal = ({ isOpen, onClose, onOpenBaso }) => {
                   {currentStapel.id} ({currentStapel.name})
                 </span>
                 <span className="text-[11px] text-slate-600">
-                  {currentStapel.gudang} • Blok {currentStapel.block}, No. {currentStapel.number}
+                  {currentStapel.gudang} • Blok {currentStapel.block || currentStapel.row}, No. {currentStapel.number || currentStapel.col}
                 </span>
               </div>
               <div className="text-right">
@@ -491,7 +516,7 @@ export const StockOpnameModal = ({ isOpen, onClose, onOpenBaso }) => {
                             {rec.stapelId}
                           </span>
                           <span className="text-[10px] text-slate-500">
-                            ({rec.gudang})
+                            ({rec.gudang || "Gudang"})
                           </span>
                         </div>
                         <span

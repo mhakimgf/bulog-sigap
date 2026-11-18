@@ -68,7 +68,7 @@ export interface WarehouseContextType {
   logAuditEvent: (data: any) => Promise<any>;
   isFreezeMode: boolean;
   toggleFreezeMode: () => Promise<any>;
-  opnameRecords: any[];
+  opnameRecords: Record<string, any>;
   recordStapelOpname: (data: any) => Promise<any>;
   resetOpnameSession: () => Promise<any>;
 }
