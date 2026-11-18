@@ -1,15 +1,15 @@
-// src/app/api/opname/records/route.js
-import { NextResponse } from "next/server";
-import { prisma } from "../../../../lib/prisma";
-import { createAuditLog } from "../../../../lib/audit";
+// src/app/api/opname/records/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { createAuditLog } from "@/lib/audit";
 
 // GET: Ambil seluruh catatan opname
-export async function GET(request) {
+export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     const { searchParams } = new URL(request.url);
     const gudang = searchParams.get("gudang");
 
-    const where = {
+    const where: Record<string, any> = {
       ...(gudang && { gudang }),
     };
 
@@ -31,7 +31,7 @@ export async function GET(request) {
       success: true,
       data: records,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("GET /api/opname/records error:", error);
     return NextResponse.json(
       { success: false, message: "Gagal mengambil data opname", error: error.message },
@@ -41,7 +41,7 @@ export async function GET(request) {
 }
 
 // DELETE: Reset seluruh catatan sesi opname
-export async function DELETE(request) {
+export async function DELETE(request: NextRequest): Promise<NextResponse> {
   try {
     const { searchParams } = new URL(request.url);
     const user = searchParams.get("user") || "Hendra Wijaya, S.T.";
@@ -63,7 +63,7 @@ export async function DELETE(request) {
       success: true,
       message: `Sesi stock opname berhasil direset (${deleted.count} data dihapus)`,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("DELETE /api/opname/records error:", error);
     return NextResponse.json(
       { success: false, message: "Gagal mereset sesi opname", error: error.message },

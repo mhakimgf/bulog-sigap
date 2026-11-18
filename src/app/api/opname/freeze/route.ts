@@ -1,17 +1,17 @@
-// src/app/api/opname/freeze/route.js
-import { NextResponse } from "next/server";
-import { createAuditLog } from "../../../../lib/audit";
+// src/app/api/opname/freeze/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { createAuditLog } from "@/lib/audit";
 
 // Global in-memory freeze status state (persistent across session)
 let isGlobalFreezeMode = false;
-let freezeActivatedBy = null;
-let freezeActivatedAt = null;
+let freezeActivatedBy: string | null = null;
+let freezeActivatedAt: string | null = null;
 
-export function checkIsFreezeMode() {
+export function checkIsFreezeMode(): boolean {
   return isGlobalFreezeMode;
 }
 
-export async function GET() {
+export async function GET(): Promise<NextResponse> {
   return NextResponse.json({
     success: true,
     data: {
@@ -22,7 +22,7 @@ export async function GET() {
   });
 }
 
-export async function POST(request) {
+export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const body = await request.json();
     const {
@@ -59,7 +59,7 @@ export async function POST(request) {
         activatedAt: freezeActivatedAt,
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("POST /api/opname/freeze error:", error);
     return NextResponse.json(
       { success: false, message: "Gagal mengatur status pembekuan mutasi", error: error.message },

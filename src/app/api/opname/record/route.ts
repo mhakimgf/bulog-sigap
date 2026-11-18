@@ -1,9 +1,9 @@
-// src/app/api/opname/record/route.js
-import { NextResponse } from "next/server";
-import { prisma } from "../../../../lib/prisma";
-import { createAuditLog } from "../../../../lib/audit";
+// src/app/api/opname/record/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { createAuditLog } from "@/lib/audit";
 
-export async function POST(request) {
+export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const body = await request.json();
     const {
@@ -87,7 +87,7 @@ export async function POST(request) {
       message: `Hasil opname ${stapelId} berhasil dicatat (${varianceStatus})`,
       data: record,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("POST /api/opname/record error:", error);
     return NextResponse.json(
       { success: false, message: "Gagal mencatat hasil opname", error: error.message },

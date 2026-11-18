@@ -1,10 +1,10 @@
-// src/app/api/baso/route.js
-import { NextResponse } from "next/server";
-import { prisma } from "../../../lib/prisma";
-import { createAuditLog } from "../../../lib/audit";
+// src/app/api/baso/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { createAuditLog } from "@/lib/audit";
 
 // GET: Ambil daftar seluruh dokumen resmi BASO
-export async function GET() {
+export async function GET(): Promise<NextResponse> {
   try {
     const reports = await prisma.basoReport.findMany({
       include: {
@@ -24,7 +24,7 @@ export async function GET() {
       success: true,
       data: reports,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("GET /api/baso error:", error);
     return NextResponse.json(
       { success: false, message: "Gagal mengambil daftar dokumen BASO", error: error.message },
@@ -34,7 +34,7 @@ export async function GET() {
 }
 
 // POST: Terbitkan & simpan Berita Acara Stock Opname (BASO) baru
-export async function POST(request) {
+export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const body = await request.json();
     const {
@@ -86,7 +86,7 @@ export async function POST(request) {
       message: `Dokumen BASO ${finalReportNo} berhasil diterbitkan dan diarsipkan`,
       data: newBaso,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("POST /api/baso error:", error);
     return NextResponse.json(
       { success: false, message: "Gagal menerbitkan dokumen BASO", error: error.message },
