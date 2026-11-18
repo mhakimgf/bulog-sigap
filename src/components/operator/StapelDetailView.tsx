@@ -8,8 +8,13 @@ import {
 } from "../../context/WarehouseContext";
 import { OperatorHeader } from "./OperatorHeader";
 import { OperatorBottomNav } from "./OperatorBottomNav";
+import { Stapel, Batch, Transaction } from "@/types/warehouse";
 
-export const StapelDetailView = ({ stapelId: propStapelId }) => {
+export interface StapelDetailViewProps {
+  stapelId?: string;
+}
+
+export const StapelDetailView: React.FC<StapelDetailViewProps> = ({ stapelId: propStapelId }) => {
   const {
     stapels,
     transactions,
@@ -26,23 +31,25 @@ export const StapelDetailView = ({ stapelId: propStapelId }) => {
     }
   }, [propStapelId, selectedStapelId, setSelectedStapelId]);
 
-  const [activeTab, setActiveTab] = useState("batches"); // 'batches' | 'mutasi'
+  const [activeTab, setActiveTab] = useState<"batches" | "mutasi">("batches");
 
-  const currentStapel =
-    stapels.find((s) => s.id.toLowerCase() === activeStapelId.toLowerCase()) || stapels[0];
+  const currentStapel: Stapel =
+    stapels.find((s: Stapel) => s.id.toLowerCase() === activeStapelId.toLowerCase()) || stapels[0];
 
-  const totalKoli = currentStapel.batches.reduce((sum, b) => sum + b.koli, 0);
-  const capacity = currentStapel.capacityKoli || 1000;
+  const totalKoli = (currentStapel?.batches || []).reduce((sum: number, b: Batch) => sum + b.koli, 0);
+  const capacity = currentStapel?.capacityKoli || 1000;
   const occupancyPercent = Math.min(100, Math.round((totalKoli / capacity) * 100));
 
-  const totalTonase = currentStapel.batches.reduce((sum, b) => {
+  const totalTonase = (currentStapel?.batches || []).reduce((sum: number, b: Batch) => {
     return sum + (b.koli * (b.weightPerUnitKg || 50)) / 1000;
   }, 0);
 
   // Riwayat mutasi khusus stapel ini
   const stapelTransactions = transactions.filter(
-    (t) => t.stapelId === currentStapel.id
+    (t: Transaction) => t.stapelId === currentStapel?.id
   );
+
+  if (!currentStapel) return null;
 
   return (
     <div className="min-h-screen bg-[#F8F9FF] text-[#0D1C2E] flex flex-col pb-24">
@@ -55,11 +62,11 @@ export const StapelDetailView = ({ stapelId: propStapelId }) => {
       <main className="flex-1 w-full max-w-lg mx-auto px-4 pt-20">
         {/* Quick Stapel Switcher Strip */}
         <div className="flex gap-2 overflow-x-auto pb-3 mb-2">
-          {stapels.map((s) => (
+          {stapels.map((s: Stapel) => (
             <button
               key={s.id}
               onClick={() => setSelectedStapelId(s.id)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
                 s.id === currentStapel.id
                   ? "bg-[#1E3D73] text-white shadow-sm"
                   : "bg-white border border-slate-200 text-slate-700 hover:border-slate-300"
@@ -110,7 +117,7 @@ export const StapelDetailView = ({ stapelId: propStapelId }) => {
                 </span>
               </div>
               <p className="text-xs text-slate-500">
-                {currentStapel.gudang} • Blok {currentStapel.block || currentStapel.row}, No. {currentStapel.number || currentStapel.col} • Kompleks CISKID
+                {currentStapel.gudang} • Blok {currentStapel.block}, No. {currentStapel.number} • Kompleks CISKID
               </p>
             </div>
 
@@ -161,7 +168,7 @@ export const StapelDetailView = ({ stapelId: propStapelId }) => {
           <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-slate-100">
             <button
               onClick={() => setOperatorScreen("inbound")}
-              className="py-2.5 px-3 bg-[#1E3D73] hover:bg-[#142A51] text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-sm"
+              className="py-2.5 px-3 bg-[#1E3D73] hover:bg-[#142A51] text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-sm cursor-pointer"
             >
               <span className="material-symbols-outlined text-[16px]">add_box</span>
               Tambah Muatan
@@ -169,7 +176,7 @@ export const StapelDetailView = ({ stapelId: propStapelId }) => {
             <button
               onClick={() => setOperatorScreen("outbound")}
               disabled={currentStapel.batches.length === 0}
-              className={`py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors ${
+              className={`py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
                 currentStapel.batches.length === 0
                   ? "bg-slate-100 text-slate-400 cursor-not-allowed"
                   : "bg-white border-2 border-[#1E3D73] text-[#1E3D73] hover:bg-[#EEF2F9]"
@@ -185,7 +192,7 @@ export const StapelDetailView = ({ stapelId: propStapelId }) => {
         <div className="flex border-b border-slate-200 mb-3">
           <button
             onClick={() => setActiveTab("batches")}
-            className={`pb-2.5 px-4 text-xs font-bold border-b-2 transition-all flex items-center gap-1.5 ${
+            className={`pb-2.5 px-4 text-xs font-bold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${
               activeTab === "batches"
                 ? "border-[#1E3D73] text-[#1E3D73]"
                 : "border-transparent text-slate-500 hover:text-slate-800"
@@ -196,7 +203,7 @@ export const StapelDetailView = ({ stapelId: propStapelId }) => {
           </button>
           <button
             onClick={() => setActiveTab("mutasi")}
-            className={`pb-2.5 px-4 text-xs font-bold border-b-2 transition-all flex items-center gap-1.5 ${
+            className={`pb-2.5 px-4 text-xs font-bold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${
               activeTab === "mutasi"
                 ? "border-[#1E3D73] text-[#1E3D73]"
                 : "border-transparent text-slate-500 hover:text-slate-800"
@@ -221,7 +228,7 @@ export const StapelDetailView = ({ stapelId: propStapelId }) => {
                 </p>
               </div>
             ) : (
-              currentStapel.batches.map((batch) => {
+              currentStapel.batches.map((batch: Batch) => {
                 const agingDays = calculateAgingDays(batch.dateIn);
                 const shelfLife = getShelfLifeStatus(agingDays);
 
@@ -243,7 +250,7 @@ export const StapelDetailView = ({ stapelId: propStapelId }) => {
                           </span>
                         </div>
                         <h4 className="text-sm font-bold text-[#0A1630]">
-                          {batch.commodityName}
+                          {(batch as any).commodityName || batch.brand}
                         </h4>
                         <p className="text-xs text-slate-500">{batch.brand}</p>
                       </div>
@@ -266,7 +273,7 @@ export const StapelDetailView = ({ stapelId: propStapelId }) => {
                           Masa Simpan di Gudang:
                         </span>
                         <span className="font-mono font-bold text-slate-800">
-                          {agingDays} Hari ({batch.dateIn})
+                          {agingDays} Hari ({typeof batch.dateIn === "string" ? batch.dateIn : new Date(batch.dateIn).toISOString().slice(0, 10)})
                         </span>
                       </div>
                       <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
@@ -313,51 +320,54 @@ export const StapelDetailView = ({ stapelId: propStapelId }) => {
                 Belum ada catatan mutasi untuk stapel ini.
               </div>
             ) : (
-              stapelTransactions.map((trx) => (
-                <div
-                  key={trx.id}
-                  className="bg-white rounded-xl p-3.5 shadow-sm border border-[#E2E8F0] flex items-center justify-between gap-3"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div
-                      className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                        trx.type === "MASUK"
-                          ? "bg-emerald-100 text-emerald-800"
-                          : "bg-blue-100 text-[#1E3D73]"
-                      }`}
-                    >
-                      <span className="material-symbols-outlined text-[18px]">
-                        {trx.type === "MASUK" ? "move_to_inbox" : "outbox"}
-                      </span>
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-bold text-[#0A1630]">{trx.type}</span>
-                        <span className="text-[11px] text-slate-600 truncate">
-                          {trx.suratJalan}
+              stapelTransactions.map((trx: Transaction) => {
+                const ts = typeof trx.timestamp === "string" ? trx.timestamp : new Date(trx.timestamp).toISOString();
+                return (
+                  <div
+                    key={trx.id}
+                    className="bg-white rounded-xl p-3.5 shadow-sm border border-[#E2E8F0] flex items-center justify-between gap-3"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div
+                        className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                          trx.type === "MASUK"
+                            ? "bg-emerald-100 text-emerald-800"
+                            : "bg-blue-100 text-[#1E3D73]"
+                        }`}
+                      >
+                        <span className="material-symbols-outlined text-[18px]">
+                          {trx.type === "MASUK" ? "move_to_inbox" : "outbox"}
                         </span>
                       </div>
-                      <p className="text-[11px] text-slate-500 truncate">
-                        {trx.sourceOrDest} • Oleh {trx.operator}
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-bold text-[#0A1630]">{trx.type}</span>
+                          <span className="text-[11px] text-slate-600 truncate">
+                            {trx.suratJalan}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-500 truncate">
+                          {trx.sourceOrDest} • Oleh {trx.operator}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="text-right flex-shrink-0">
+                      <p
+                        className={`text-xs font-bold font-mono ${
+                          trx.type === "MASUK" ? "text-emerald-700" : "text-blue-700"
+                        }`}
+                      >
+                        {trx.type === "MASUK" ? "+" : "-"}
+                        {trx.koli} {trx.unit}
+                      </p>
+                      <p className="text-[10px] text-slate-400 font-mono">
+                        {ts.slice(0, 10)} {ts.slice(11, 16)}
                       </p>
                     </div>
                   </div>
-
-                  <div className="text-right flex-shrink-0">
-                    <p
-                      className={`text-xs font-bold font-mono ${
-                        trx.type === "MASUK" ? "text-emerald-700" : "text-blue-700"
-                      }`}
-                    >
-                      {trx.type === "MASUK" ? "+" : "-"}
-                      {trx.koli} {trx.unit}
-                    </p>
-                    <p className="text-[10px] text-slate-400 font-mono">
-                      {trx.timestamp.slice(0, 10)} {trx.timestamp.slice(11, 16)}
-                    </p>
-                  </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         )}
