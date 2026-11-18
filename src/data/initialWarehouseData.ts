@@ -1,5 +1,8 @@
 // Data Awal Kompleks Pergudangan CISKID (Cisaranten Kidul - Bandung)
-export const INITIAL_WAREHOUSE = {
+import { Warehouse, Commodity, Stapel, Transaction, StapelStatusType } from "../types/warehouse";
+import { User } from "../types/auth";
+
+export const INITIAL_WAREHOUSE: Warehouse = {
   id: "wh-ciskid",
   code: "GBB-CISKID",
   name: "Kompleks Pergudangan Cisaranten Kidul (CISKID)",
@@ -28,7 +31,7 @@ export const INITIAL_WAREHOUSE = {
   ],
 };
 
-export const COMMODITIES = [
+export const COMMODITIES: Commodity[] = [
   {
     id: "beras-medium",
     name: "Beras Medium SPHP (CBP)",
@@ -82,7 +85,7 @@ export const COMMODITIES = [
 ];
 
 // Generator Stapel 4x3 per Gudang (Blok A, Blok B, Blok C @ 4 stapel)
-const createStapelsForGudang = (gudangName, layout = "vertical") => {
+const createStapelsForGudang = (gudangName: string, _layout = "vertical"): Stapel[] => {
   const gCode = gudangName.replace("Gudang ", "G");
   const blocks = [
     { block: "A", name: "Blok A", colorClass: "bg-[#FFD1D8] text-[#9F1239] border-[#FDA4AF]", baseColor: "pink" },
@@ -90,15 +93,15 @@ const createStapelsForGudang = (gudangName, layout = "vertical") => {
     { block: "C", name: "Blok C", colorClass: "bg-[#BBF7D0] text-[#166534] border-[#86EFAC]", baseColor: "green" },
   ];
 
-  const stapelList = [];
+  const stapelList: Stapel[] = [];
 
   blocks.forEach((blk) => {
     // Tiap blok memiliki 4 stapel (1, 2, 3, 4)
     for (let num = 1; num <= 4; num++) {
       const stapelId = `${gCode}-${blk.block}${num}`;
       
-      let batches = [];
-      let status = "kosong";
+      let batches: any[] = [];
+      let status: StapelStatusType = "kosong";
 
       // Berikan data realistis pada beberapa stapel di Gudang 1
       if (gudangName === "Gudang 1") {
@@ -107,9 +110,10 @@ const createStapelsForGudang = (gudangName, layout = "vertical") => {
           batches = [
             {
               id: "batch-ciskid-09",
-              batchNo: "Batch #09",
+              stapelId,
               commodityId: "beras-medium",
               commodityName: "Beras Medium SPHP (CBP)",
+              batchNo: "Batch #09",
               brand: "Bulog CBP",
               koli: 400,
               unit: "Karung",
@@ -122,9 +126,10 @@ const createStapelsForGudang = (gudangName, layout = "vertical") => {
             },
             {
               id: "batch-ciskid-14",
-              batchNo: "Batch #14",
+              stapelId,
               commodityId: "beras-medium",
               commodityName: "Beras Medium SPHP (CBP)",
+              batchNo: "Batch #14",
               brand: "Bulog CBP",
               koli: 350,
               unit: "Karung",
@@ -141,9 +146,10 @@ const createStapelsForGudang = (gudangName, layout = "vertical") => {
           batches = [
             {
               id: "batch-ciskid-21",
-              batchNo: "Batch #21",
+              stapelId,
               commodityId: "minyakita-jerigen",
               commodityName: "Minyakita Jerigen 5L",
+              batchNo: "Batch #21",
               brand: "Minyakita",
               koli: 950,
               unit: "Jerigen",
@@ -160,9 +166,10 @@ const createStapelsForGudang = (gudangName, layout = "vertical") => {
           batches = [
             {
               id: "batch-ciskid-04",
-              batchNo: "Batch #04",
+              stapelId,
               commodityId: "beras-premium",
               commodityName: "Beras Premium Kita",
+              batchNo: "Batch #04",
               brand: "Beras Kita 50kg",
               koli: 980,
               unit: "Karung",
@@ -179,9 +186,10 @@ const createStapelsForGudang = (gudangName, layout = "vertical") => {
           batches = [
             {
               id: "batch-ciskid-11",
-              batchNo: "Batch #11",
+              stapelId,
               commodityId: "gula-maniskita",
               commodityName: "Gula Pasir Manis Kita",
+              batchNo: "Batch #11",
               brand: "Manis Kita 50kg",
               koli: 520,
               unit: "Karung",
@@ -198,9 +206,10 @@ const createStapelsForGudang = (gudangName, layout = "vertical") => {
           batches = [
             {
               id: "batch-ciskid-18",
-              batchNo: "Batch #18",
+              stapelId,
               commodityId: "tepung-terigukita",
               commodityName: "Tepung Terigu Kita",
+              batchNo: "Batch #18",
               brand: "Kita Terigu Serbaguna",
               koli: 450,
               unit: "Karung",
@@ -237,7 +246,7 @@ const createStapelsForGudang = (gudangName, layout = "vertical") => {
 };
 
 // Generate initial stapels for all 5 gudang in CISKID
-export const INITIAL_STAPELS = [
+export const INITIAL_STAPELS: Stapel[] = [
   ...createStapelsForGudang("Gudang 1", "vertical"),
   ...createStapelsForGudang("Gudang 2", "vertical"),
   ...createStapelsForGudang("Gudang 3", "horizontal"),
@@ -245,7 +254,7 @@ export const INITIAL_STAPELS = [
   ...createStapelsForGudang("Gudang 5", "horizontal"),
 ];
 
-export const INITIAL_TRANSACTIONS = [
+export const INITIAL_TRANSACTIONS: Transaction[] = [
   {
     id: "TRX-20261115-001",
     type: "MASUK",
@@ -302,7 +311,7 @@ export const INITIAL_TRANSACTIONS = [
   },
 ];
 
-export const INITIAL_USERS = [
+export const INITIAL_USERS: User[] = [
   {
     id: "usr-admin-01",
     name: "Administrator Pusat",
