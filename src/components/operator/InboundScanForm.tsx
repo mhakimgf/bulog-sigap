@@ -6,8 +6,9 @@ import { useWarehouse } from "../../context/WarehouseContext";
 import { OperatorHeader } from "./OperatorHeader";
 import { QrCameraScanner } from "../common/QrCameraScanner";
 import { CustomSelect } from "../common/CustomSelect";
+import { Stapel, Commodity } from "../../types/warehouse";
 
-export const InboundScanForm = () => {
+export const InboundScanForm: React.FC = () => {
   const {
     stapels,
     commodities,
@@ -19,33 +20,45 @@ export const InboundScanForm = () => {
   } = useWarehouse();
 
   // Selected stapel for scanning
-  const [currentStapelId, setCurrentStapelId] = useState(selectedStapelId || "G1-A2");
-  const [scannerMode, setScannerMode] = useState("camera"); // 'camera' | 'simulation'
+  const [currentStapelId, setCurrentStapelId] = useState<string>(selectedStapelId || "G1-A2");
+  const [scannerMode, setScannerMode] = useState<"camera" | "simulation">("camera");
 
   // Form states
-  const [commodityId, setCommodityId] = useState("beras-medium");
-  const [brand, setBrand] = useState("SPHP Bulog CBP");
-  const [unit, setUnit] = useState("Karung");
-  const [weightPerUnitKg, setWeightPerUnitKg] = useState("50");
-  const [koli, setKoli] = useState("200");
-  const [dateIn, setDateIn] = useState("2026-11-15");
-  const [expiryDate, setExpiryDate] = useState("");
-  const [origin, setOrigin] = useState("Pusat Pengadaan Karawang");
-  const [suratJalan, setSuratJalan] = useState("SJ-CBP-2026-1115-09");
-  const [kondisi, setKondisi] = useState("Baik");
-  const [notes, setNotes] = useState("");
-  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [commodityId, setCommodityId] = useState<string>("beras-medium");
+  const [brand, setBrand] = useState<string>("SPHP Bulog CBP");
+  const [unit, setUnit] = useState<string>("Karung");
+  const [weightPerUnitKg, setWeightPerUnitKg] = useState<string>("50");
+  const [koli, setKoli] = useState<string>("200");
+  const [dateIn, setDateIn] = useState<string>("2026-11-15");
+  const [expiryDate, setExpiryDate] = useState<string>("");
+  const [origin, setOrigin] = useState<string>("Pusat Pengadaan Karawang");
+  const [suratJalan, setSuratJalan] = useState<string>("SJ-CBP-2026-1115-09");
+  const [kondisi, setKondisi] = useState<string>("Baik");
+  const [notes, setNotes] = useState<string>("");
+  const [isSubmitted, setIsSubmitted] = useState<boolean>(false);
 
-  const selectedStapel = stapels.find((s) => s.id === currentStapelId) || stapels[0];
-  const currentTotalKoli = selectedStapel.batches.reduce((sum, b) => sum + b.koli, 0);
+  const selectedStapel: Stapel =
+    stapels.find((s) => s.id === currentStapelId) ||
+    stapels[0] || {
+      id: currentStapelId,
+      gudang: "Gudang 1",
+      block: "A",
+      number: 1,
+      name: `Stapel ${currentStapelId}`,
+      capacityKoli: 1000,
+      status: "kosong",
+      batches: [],
+    };
+
+  const currentTotalKoli = (selectedStapel.batches || []).reduce((sum, b) => sum + (b.koli || 0), 0);
   const capacity = selectedStapel.capacityKoli || 1000;
   const occupancyPercent = Math.min(100, Math.round((currentTotalKoli / capacity) * 100));
 
   // Change commodity defaults
-  const handleCommodityChange = (e) => {
+  const handleCommodityChange = (e: React.ChangeEvent<HTMLSelectElement> | { target: { value: string } }) => {
     const selectedId = e.target.value;
     setCommodityId(selectedId);
-    const comm = commodities.find((c) => c.id === selectedId);
+    const comm = commodities.find((c: Commodity) => c.id === selectedId);
     if (comm) {
       setUnit(comm.defaultUnit);
       setWeightPerUnitKg(comm.defaultWeight.toString());
@@ -57,7 +70,7 @@ export const InboundScanForm = () => {
     }
   };
 
-  const handleSimulateScan = (stapelId) => {
+  const handleSimulateScan = (stapelId: string) => {
     setCurrentStapelId(stapelId);
     setSelectedStapelId(stapelId);
     try {
@@ -65,7 +78,7 @@ export const InboundScanForm = () => {
     } catch {}
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (isFreezeMode) {
       alert("Mutasi barang masuk ditangguhkan sementara karena Sesi Stock Opname sedang berlangsung.");
@@ -505,7 +518,7 @@ export const InboundScanForm = () => {
           <button
             type="submit"
             disabled={isSubmitted}
-            className="w-full h-14 bg-[#1E3D73] hover:bg-[#142A51] active:scale-[0.99] text-white rounded-xl font-bold text-sm tracking-wide shadow-md flex items-center justify-center gap-2 transition-all"
+            className="w-full h-14 bg-[#1E3D73] hover:bg-[#142A51] active:scale-[0.99] text-white rounded-xl font-bold text-sm tracking-wide shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer"
           >
             <span className="material-symbols-outlined text-[22px]">
               {isSubmitted ? "check_circle" : "save"}

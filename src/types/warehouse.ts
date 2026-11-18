@@ -84,6 +84,8 @@ export interface Stapel {
   gudang: string; // "Gudang 1"
   block: string; // "A", "B", "C"
   number: number; // 1, 2, 3, 4
+  row?: string;
+  col?: number;
   name: string; // "Stapel A1"
   capacityKoli: number;
   status: StapelStatusType;
