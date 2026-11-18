@@ -7,6 +7,10 @@ let isGlobalFreezeMode = false;
 let freezeActivatedBy = null;
 let freezeActivatedAt = null;
 
+export function checkIsFreezeMode() {
+  return isGlobalFreezeMode;
+}
+
 export async function GET() {
   return NextResponse.json({
     success: true,

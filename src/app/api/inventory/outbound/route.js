@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "../../../../lib/prisma";
 import { createAuditLog } from "../../../../lib/audit";
+import { checkIsFreezeMode } from "../../opname/freeze/route";
 
 function getStapelStatus(totalKoli, capacity = 1000) {
   if (totalKoli <= 0) return "kosong";
@@ -11,6 +12,16 @@ function getStapelStatus(totalKoli, capacity = 1000) {
 
 export async function POST(request) {
   try {
+    if (checkIsFreezeMode()) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Pengeluaran barang ditolak: Kompleks Pergudangan sedang dalam sesi pembekuan mutasi fisik (Freeze Mode) untuk Stock Opname.",
+        },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const {
       stapelId,

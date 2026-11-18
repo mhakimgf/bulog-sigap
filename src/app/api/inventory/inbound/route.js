@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "../../../../lib/prisma";
 import { createAuditLog } from "../../../../lib/audit";
+import { checkIsFreezeMode } from "../../opname/freeze/route";
 
 function getStapelStatus(totalKoli, capacity = 1000) {
   if (totalKoli <= 0) return "kosong";
@@ -11,6 +12,17 @@ function getStapelStatus(totalKoli, capacity = 1000) {
 
 export async function POST(request) {
   try {
+    // 1. Validasi Freeze Mode
+    if (checkIsFreezeMode()) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Mutasi barang masuk ditolak: Kompleks Pergudangan sedang dalam sesi pembekuan mutasi fisik (Freeze Mode) untuk Stock Opname.",
+        },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const {
       stapelId,
@@ -31,9 +43,10 @@ export async function POST(request) {
       isOffline = false,
     } = body;
 
-    if (!stapelId || !commodityId || !koli) {
+    const koliNum = parseInt(koli, 10);
+    if (!stapelId || !commodityId || isNaN(koliNum) || koliNum <= 0) {
       return NextResponse.json(
-        { success: false, message: "Parameter stapelId, commodityId, dan koli wajib diisi" },
+        { success: false, message: "Parameter stapelId, commodityId, dan koli wajib diisi dengan angka positif (> 0)" },
         { status: 400 }
       );
     }
@@ -50,6 +63,18 @@ export async function POST(request) {
       );
     }
 
+    // 2. Validasi Kapasitas Maksimum Stapel
+    const currentOccupied = stapel.batches.reduce((sum, b) => sum + b.koli, 0);
+    if (currentOccupied + koliNum > stapel.capacityKoli) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: `Kapasitas stapel tidak mencukupi (Sisa ruang: ${stapel.capacityKoli - currentOccupied} koli, Permintaan masuk: ${koliNum} koli)`,
+        },
+        { status: 400 }
+      );
+    }
+
     const commodity = await prisma.commodity.findUnique({
       where: { id: commodityId },
     });
@@ -61,7 +86,6 @@ export async function POST(request) {
       );
     }
 
-    const koliNum = parseInt(koli, 10);
     const weightNum = parseFloat(weightPerUnitKg) || commodity.defaultWeight || 50;
     const finalSuratJalan = suratJalan || `SJ-INB-${Date.now().toString().slice(-6)}`;
     const batchNo = `Batch #${Math.floor(Math.random() * 80) + 10}`;
