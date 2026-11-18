@@ -1,8 +1,8 @@
-// src/app/api/inventory/transactions/route.js
-import { NextResponse } from "next/server";
-import { prisma } from "../../../../lib/prisma";
+// src/app/api/inventory/transactions/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 
-export async function GET(request) {
+export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     const { searchParams } = new URL(request.url);
     const type = searchParams.get("type"); // MASUK, KELUAR, PENYESUAIAN
@@ -12,7 +12,7 @@ export async function GET(request) {
     const limit = parseInt(searchParams.get("limit") || "50", 10);
     const offset = parseInt(searchParams.get("offset") || "0", 10);
 
-    const where = {
+    const where: Record<string, any> = {
       ...(type && { type }),
       ...(gudang && { gudang }),
       ...(stapelId && { stapelId }),
@@ -46,7 +46,7 @@ export async function GET(request) {
         offset,
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("GET /api/inventory/transactions error:", error);
     return NextResponse.json(
       { success: false, message: "Gagal mengambil data transaksi", error: error.message },

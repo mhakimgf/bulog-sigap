@@ -4,6 +4,7 @@
 export type ShelfLifeStatusType = "optimal" | "waspada" | "prioritas" | "kritis";
 
 export type StapelStatusType = "kosong" | "sebagian" | "penuh" | "nonaktif";
+export type StapelStatus = StapelStatusType;
 
 export type TransactionType = "MASUK" | "KELUAR" | "PENYESUAIAN";
 

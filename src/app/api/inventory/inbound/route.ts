@@ -1,16 +1,17 @@
-// src/app/api/inventory/inbound/route.js
-import { NextResponse } from "next/server";
-import { prisma } from "../../../../lib/prisma";
-import { createAuditLog } from "../../../../lib/audit";
-import { checkIsFreezeMode } from "../../opname/freeze/route";
+// src/app/api/inventory/inbound/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { createAuditLog } from "@/lib/audit";
+import { checkIsFreezeMode } from "@/app/api/opname/freeze/route";
+import { StapelStatus } from "@/types/warehouse";
 
-function getStapelStatus(totalKoli, capacity = 1000) {
+function getStapelStatus(totalKoli: number, capacity = 1000): StapelStatus {
   if (totalKoli <= 0) return "kosong";
   if (totalKoli >= capacity * 0.8) return "penuh";
   return "sebagian";
 }
 
-export async function POST(request) {
+export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     // 1. Validasi Freeze Mode
     if (checkIsFreezeMode()) {
@@ -157,7 +158,7 @@ export async function POST(request) {
         transaction,
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("POST /api/inventory/inbound error:", error);
     return NextResponse.json(
       { success: false, message: "Gagal memproses penerimaan barang masuk", error: error.message },

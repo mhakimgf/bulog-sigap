@@ -1,17 +1,18 @@
-// src/app/api/inventory/batches/route.js
-import { NextResponse } from "next/server";
-import { prisma } from "../../../../lib/prisma";
-import { createAuditLog } from "../../../../lib/audit";
+// src/app/api/inventory/batches/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { createAuditLog } from "@/lib/audit";
+import { StapelStatus } from "@/types/warehouse";
 
 // Helper status keterisian stapel
-function getStapelStatus(totalKoli, capacity = 1000) {
+function getStapelStatus(totalKoli: number, capacity = 1000): StapelStatus {
   if (totalKoli <= 0) return "kosong";
   if (totalKoli >= capacity * 0.8) return "penuh";
   return "sebagian";
 }
 
 // GET: Ambil seluruh batch barang yang ada di gudang
-export async function GET(request) {
+export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     const { searchParams } = new URL(request.url);
     const stapelId = searchParams.get("stapelId");
@@ -19,7 +20,7 @@ export async function GET(request) {
     const gudang = searchParams.get("gudang");
     const kondisi = searchParams.get("kondisi");
 
-    const where = {
+    const where: Record<string, any> = {
       ...(stapelId && { stapelId }),
       ...(commodityId && { commodityId }),
       ...(kondisi && { kondisi }),
@@ -53,7 +54,7 @@ export async function GET(request) {
     const now = new Date("2026-11-15T00:00:00Z");
     const enriched = batches.map((b) => {
       const inDate = new Date(b.dateIn);
-      const diffTime = Math.max(0, now - inDate);
+      const diffTime = Math.max(0, now.getTime() - inDate.getTime());
       const agingDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
       const maxDays = b.commodity?.maxShelfLifeDays || 180;
 
@@ -74,7 +75,7 @@ export async function GET(request) {
       success: true,
       data: enriched,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("GET /api/inventory/batches error:", error);
     return NextResponse.json(
       { success: false, message: "Gagal mengambil data batch gudang", error: error.message },
@@ -84,7 +85,7 @@ export async function GET(request) {
 }
 
 // POST: Tambah batch barang baru secara langsung & catat ke Audit Log
-export async function POST(request) {
+export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const body = await request.json();
     const {
@@ -204,7 +205,7 @@ export async function POST(request) {
       message: `Batch ${newBatch.batchNo} berhasil ditambahkan di ${stapelId}`,
       data: newBatch,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("POST /api/inventory/batches error:", error);
     return NextResponse.json(
       { success: false, message: "Gagal menambahkan batch", error: error.message },
