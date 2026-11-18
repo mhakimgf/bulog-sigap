@@ -4,6 +4,7 @@
 export type UserRole = "superadmin" | "kepala_gudang" | "operator";
 
 export type AccountStatus = "aktif" | "nonaktif";
+export type UserStatus = AccountStatus;
 
 export interface User {
   id: string;

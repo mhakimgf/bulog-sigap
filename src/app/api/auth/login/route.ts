@@ -1,11 +1,17 @@
-// src/app/api/auth/login/route.js
-import { NextResponse } from "next/server";
-import { prisma } from "../../../../lib/prisma";
-import { createAuditLog } from "../../../../lib/audit";
+// src/app/api/auth/login/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { createAuditLog } from "@/lib/audit";
+import { UserRole, UserStatus } from "@/types/auth";
 
-export async function POST(request) {
+interface LoginRequestBody {
+  emailOrNip?: string;
+  password?: string;
+}
+
+export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
-    const body = await request.json();
+    const body: LoginRequestBody = await request.json();
     const { emailOrNip, password } = body;
 
     const trimmedInput = (emailOrNip || "").trim().toLowerCase();
@@ -67,9 +73,9 @@ export async function POST(request) {
         name: user.name,
         email: user.email,
         nip: user.nip,
-        role: user.role,
+        role: user.role as UserRole,
         unitGudang: user.unitGudang,
-        status: user.status,
+        status: user.status as UserStatus,
         lastLogin: updatedUser.lastLogin,
       },
     });
@@ -84,7 +90,7 @@ export async function POST(request) {
     });
 
     return response;
-  } catch (error) {
+  } catch (error: any) {
     console.error("POST /api/auth/login error:", error);
     return NextResponse.json(
       { success: false, message: "Terjadi kesalahan saat memproses login", error: error.message },

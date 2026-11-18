@@ -1,8 +1,8 @@
-// src/app/api/auth/me/route.js
-import { NextResponse } from "next/server";
-import { prisma } from "../../../../lib/prisma";
+// src/app/api/auth/me/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 
-export async function GET(request) {
+export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     const sessionCookie = request.cookies.get("sigap_session");
     if (!sessionCookie?.value) {
@@ -12,10 +12,17 @@ export async function GET(request) {
       );
     }
 
-    let sessionData;
+    let sessionData: { id?: string; role?: string };
     try {
       sessionData = JSON.parse(sessionCookie.value);
     } catch {
+      return NextResponse.json(
+        { success: false, message: "Format sesi tidak valid" },
+        { status: 401 }
+      );
+    }
+
+    if (!sessionData?.id) {
       return NextResponse.json(
         { success: false, message: "Format sesi tidak valid" },
         { status: 401 }
@@ -47,7 +54,7 @@ export async function GET(request) {
       success: true,
       data: user,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("GET /api/auth/me error:", error);
     return NextResponse.json(
       { success: false, message: "Gagal memverifikasi sesi", error: error.message },

@@ -27,6 +27,7 @@ build/
 out/
 .next/
 *.log
+*.tsbuildinfo
 
 # Operating System Files
 .DS_Store

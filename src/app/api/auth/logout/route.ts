@@ -1,11 +1,11 @@
-// src/app/api/auth/logout/route.js
-import { NextResponse } from "next/server";
-import { createAuditLog } from "../../../../lib/audit";
+// src/app/api/auth/logout/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { createAuditLog } from "@/lib/audit";
 
-export async function POST(request) {
+export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const sessionCookie = request.cookies.get("sigap_session");
-    let userId = null;
+    let userId: string | null = null;
 
     if (sessionCookie?.value) {
       try {
@@ -30,7 +30,7 @@ export async function POST(request) {
 
     response.cookies.delete("sigap_session");
     return response;
-  } catch (error) {
+  } catch (error: any) {
     console.error("POST /api/auth/logout error:", error);
     return NextResponse.json(
       { success: false, message: "Gagal mengakhiri sesi", error: error.message },
