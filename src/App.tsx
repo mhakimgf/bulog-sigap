@@ -1,3 +1,5 @@
+"use client";
+
 import React from "react";
 import { WarehouseProvider, useWarehouse } from "./context/WarehouseContext";
 import { LoginPage } from "./components/auth/LoginPage";
@@ -9,7 +11,7 @@ import { HistoryScreen } from "./components/operator/HistoryScreen";
 import { WarehouseDashboard } from "./components/dashboard/WarehouseDashboard";
 import { Toast } from "./components/common/Toast";
 
-const AppContent = () => {
+const AppContent: React.FC = () => {
   const {
     currentUser,
     activeView,
@@ -27,7 +29,7 @@ const AppContent = () => {
   }
 
   // 2. Render layar operasional operator lapangan
-  const renderOperatorScreen = () => {
+  const renderOperatorScreen = (): React.ReactElement => {
     switch (operatorScreen) {
       case "inbound":
         return <InboundScanForm />;
@@ -64,7 +66,7 @@ const AppContent = () => {
   );
 };
 
-export default function App() {
+export default function App(): React.ReactElement {
   return (
     <WarehouseProvider>
       <AppContent />
